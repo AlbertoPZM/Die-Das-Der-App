@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Der Die Das</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday study tool, calm and quick
+   IDEA German road signage: der/die/das as blue, red and green sign plates around one card
+   PICTURE the flashcard itself, large and centred, with the three article plates on its edges
+   COLOUR white or near-black ground, neutral card, der blue, die red, das green
+   TYPE Barlow 800 for the noun, Barlow 500/600 for everything else
+   LAYOUT one-screen app: top bar, card filling the middle, counter at the foot; lists and settings as full views */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0b0b0c);--ink:light-dark(#111113,#f4f4f2);--mut:light-dark(#6a6a70,#93939a);--card:light-dark(#f2f2ef,#1b1b1e);--card2:light-dark(#e8e8e4,#26262a);--line:light-dark(#e2e2de,#2b2b30);--der:light-dark(#1d64d8,#3d82f2);--die:light-dark(#d9302f,#ee4a47);--das:light-dark(#178a48,#2fb466)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input{font:inherit;color:inherit}
+.app{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0) max(16px,env(safe-area-inset-right,0)) env(safe-area-inset-bottom,0) max(16px,env(safe-area-inset-left,0))}
+.view{display:none;flex:1;flex-direction:column;min-height:0}
+.view.on{display:flex}
+.bar{position:relative;display:flex;align-items:center;gap:12px;padding:12px 0;flex:none}
+.bar h1{flex:1;margin:0;font-size:20px;font-weight:700;text-align:center;letter-spacing:-.01em}
+.ib{width:44px;height:44px;border-radius:50%;background:var(--card);display:grid;place-items:center;flex:none}
+.ib:hover{background:var(--card2)}
+.ib svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ib.ghost{visibility:hidden}
+:focus-visible{outline:3px solid var(--der);outline-offset:2px}
+.g-m{color:var(--der)}.g-f{color:var(--die)}.g-n{color:var(--das)}
+
+/* practice */
+.stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;padding:34px 18px 12px;min-height:0}
+.card{position:relative;width:100%;max-width:420px;height:min(100%,560px);background:var(--card);border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:28px 22px 40px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;box-shadow:0 1px 0 var(--line) inset,0 0 0 1px var(--line)}
+.card.anim{transition:transform .22s ease,opacity .22s ease}
+.card.enter{animation:enter .22s ease}
+@keyframes enter{from{opacity:0;transform:scale(.95)}}
+.card.shake{animation:shake .35s ease}
+@keyframes shake{20%{transform:translateX(-10px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(3px)}}
+.tint{position:absolute;inset:0;border-radius:inherit;opacity:0;pointer-events:none;transition:opacity .1s}
+.word{font-weight:800;font-size:clamp(38px,11vw,60px);line-height:1.05;letter-spacing:-.02em;text-align:center;overflow-wrap:anywhere;position:relative}
+.art{display:block;font-size:.5em;letter-spacing:0;margin-bottom:4px}
+.tr{color:var(--mut);font-weight:600;font-size:20px;margin-top:8px;text-align:center;position:relative;min-height:1.45em}
+.segs{display:flex;gap:5px;margin-top:22px;position:relative}
+.segs i{width:26px;height:5px;border-radius:3px;background:var(--card2)}
+.segs i.f{background:var(--mut)}
+.segs.done i{background:var(--das)}
+.info{position:relative;text-align:center;margin-top:14px;color:var(--mut);font-size:16px}
+.info b{color:var(--ink);font-weight:600}
+.hint{position:relative;margin-top:14px;background:var(--bg);border-radius:14px;padding:10px 14px;font-size:15px;text-align:center;max-width:320px}
+.tap{position:relative;margin-top:16px;font-size:14px;color:var(--mut)}
+.top-note{position:absolute;top:26px;left:0;right:0;text-align:center;color:var(--mut);font-size:15px;padding:0 20px}
+.pill{position:absolute;z-index:2;height:52px;min-width:104px;padding:0 20px;border-radius:26px;color:#fff;font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .12s,opacity .12s;box-shadow:0 6px 16px rgb(0 0 0/.18)}
+.pill svg{width:20px;height:20px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.p-n{background:var(--das);top:8px;left:50%;translate:-50% 0}
+.p-f{background:var(--die);left:2px;top:50%;translate:0 -50%}
+.p-m{background:var(--der);right:2px;top:50%;translate:0 -50%}
+.pill.hot{transform:scale(1.14)}
+.pill.dim{opacity:.35}
+.pill.right{transform:scale(1.14);box-shadow:0 0 0 4px var(--bg),0 0 0 7px currentColor}
+.foot{flex:none;display:flex;justify-content:center;padding:6px 0 14px}
+.count{background:var(--card);border-radius:24px;padding:11px 22px;font-weight:600;font-size:17px;white-space:nowrap}
+.count b{font-weight:800}
+.toast{position:absolute;top:50%;left:50%;translate:-50% -50%;background:var(--ink);color:var(--bg);padding:7px 16px;border-radius:18px;font-weight:700;font-size:16px;white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none;z-index:3;max-width:calc(100% - 120px);overflow:hidden;text-overflow:ellipsis}
+.toast.on{opacity:1}
+.empty{position:relative;text-align:center;margin:auto 0;display:grid;gap:14px;justify-items:center}
+.empty h2{margin:0;font-size:28px;line-height:1.1;font-weight:800}
+.empty p{margin:0;color:var(--mut)}
+.btn{background:var(--ink);color:var(--bg);border-radius:22px;padding:11px 20px;font-weight:700;min-height:44px}
+.btn.sec{background:var(--card2);color:var(--ink)}
+
+/* library */
+.tabs{display:flex;background:var(--card);border-radius:24px;padding:4px;gap:4px;margin:0 0 12px;flex:none}
+.tabs button{flex:1;border-radius:20px;padding:9px 0;font-weight:700;color:var(--mut);min-height:40px}
+.tabs button.on{background:var(--bg);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.scrollv{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:24px;-webkit-overflow-scrolling:touch}
+.row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border-radius:20px;margin-bottom:10px}
+.row .main{flex:1;min-width:0}
+.row h3{margin:0;font-size:20px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .sub{color:var(--mut);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .sub.on{color:var(--der)}
+.mbar{height:5px;border-radius:3px;background:var(--card2);margin-top:8px;overflow:hidden}
+.mbar i{display:block;height:100%;background:var(--das)}
+.chk{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--card2);flex:none}
+.chk svg{width:20px;height:20px;stroke:var(--mut);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.chk.on{background:color-mix(in srgb,var(--der) 22%,transparent)}
+.chk.on svg{stroke:var(--der)}
+.quick{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+.quick .chip{flex:none}
+.chip{background:var(--card);border-radius:18px;padding:8px 12px;font-weight:600;font-size:15px;min-height:38px;color:var(--mut)}
+.chip.on{background:var(--ink);color:var(--bg)}
+.search{display:flex;gap:8px;margin-bottom:10px}
+.search input{flex:1;height:46px;border-radius:23px;border:1px solid var(--line);background:var(--card);padding:0 18px;font-size:16px;outline:none}
+.search input:focus{border-color:var(--der)}
+.nrow{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.nrow .main{flex:1;min-width:0}
+.nrow h3{margin:0;font-size:22px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nrow .sub{color:var(--mut);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nrow .segs{margin-top:8px;gap:4px}
+.nrow .segs i{width:auto;flex:1;height:4px}
+.nrow .segs{display:flex;width:100%}
+.del{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--mut);flex:none}
+.del svg{width:16px;height:16px;stroke:currentColor;stroke-width:2.5;fill:none;stroke-linecap:round}
+.more{display:block;margin:16px auto 0}
+.addf{background:var(--card);border-radius:20px;padding:16px;margin-bottom:10px;display:grid;gap:10px}
+.addf input{height:46px;border-radius:14px;border:1px solid var(--line);background:var(--bg);padding:0 14px;font-size:16px;outline:none;width:100%}
+.addf input:focus{border-color:var(--der)}
+.seg3{display:flex;gap:6px}
+.seg3 button{flex:1;height:44px;border-radius:14px;background:var(--bg);font-weight:800;font-size:18px;color:var(--mut);box-shadow:0 0 0 1px var(--line)}
+.seg3 button.on.m{background:var(--der);color:#fff;box-shadow:none}
+.seg3 button.on.f{background:var(--die);color:#fff;box-shadow:none}
+.seg3 button.on.n{background:var(--das);color:#fff;box-shadow:none}
+.err{color:var(--die);font-size:14px;margin:0}
+
+/* settings */
+.grp{color:var(--mut);font-weight:700;font-size:17px;margin:18px 4px 8px}
+.box{background:var(--card);border-radius:22px;padding:4px 18px}
+.set{padding:14px 0;border-bottom:1px solid var(--line)}
+.set:last-child{border-bottom:0}
+.set .lbl{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-weight:700;font-size:18px}
+.set .lbl span{color:var(--mut);font-weight:600;white-space:nowrap}
+.set p{margin:6px 0 0;color:var(--mut);font-size:15px}
+.opts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.opts button{flex:1 1 0;min-height:40px;border-radius:12px;background:var(--bg);font-weight:600;font-size:15px;color:var(--mut);box-shadow:0 0 0 1px var(--line);padding:0 8px;white-space:nowrap}
+.opts button.on{background:var(--der);color:#fff;box-shadow:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;margin-top:4px}
+input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:5px;background:linear-gradient(var(--der),var(--der)) 0/var(--pct,50%) 100% no-repeat,var(--bg)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;margin-top:-9px;box-shadow:0 1px 4px rgb(0 0 0/.35)}
+input[type=range]::-moz-range-track{height:10px;border-radius:5px;background:var(--bg)}
+input[type=range]::-moz-range-progress{height:10px;border-radius:5px;background:var(--der)}
+input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;border:0;box-shadow:0 1px 4px rgb(0 0 0/.35)}
+.tgl{width:52px;height:32px;border-radius:16px;background:var(--bg);position:relative;flex:none;box-shadow:0 0 0 1px var(--line)}
+.tgl::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:var(--mut);transition:left .15s}
+.tgl.on{background:var(--das);box-shadow:none}
+.tgl.on::after{left:23px;background:#fff}
+.set.line{display:flex;align-items:center;gap:12px}
+.set.line .lbl{flex:1}
+.danger{color:var(--die);font-weight:700;padding:14px 0;width:100%;text-align:left;min-height:44px}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:15px;margin-top:10px;color:var(--mut)}
+.legend b{font-weight:800}
+@media(max-width:380px){.pill{min-width:88px;height:46px;font-size:19px;padding:0 14px}.stage{padding-inline:10px}}
+@media(prefers-reduced-motion:reduce){.card.anim,.card.enter,.card.shake{transition:none;animation:none}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<section class="view on" id="v-play" aria-label="Práctica">
+  <div class="bar">
+    <button class="ib" id="toLib" aria-label="Temas y palabras"><svg viewBox="0 0 24 24"><path d="M3 5.5C5.5 4 8.5 4 12 6c3.5-2 6.5-2 9-.5V19c-2.5-1.5-5.5-1.5-9 .5-3.5-2-6.5-2-9-.5z"/><path d="M12 6v13.5"/></svg></button>
+    <h1 id="playTitle"></h1>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <button class="ib" id="toSet" aria-label="Ajustes"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
+  </div>
+  <div class="stage" id="stage">
+    <button class="pill p-n" data-g="n" aria-label="das (deslizar hacia arriba)">Das <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    <button class="pill p-f" data-g="f" aria-label="die (deslizar a la izquierda)"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg> Die</button>
+    <button class="pill p-m" data-g="m" aria-label="der (deslizar a la derecha)">Der <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <div class="card" id="card"></div>
+  </div>
+  <div class="foot"><button class="count" id="count"></button></div>
+</section>
+
+<section class="view" id="v-lib" aria-label="Temas y palabras">
+  <div class="bar">
+    <button class="ib back" aria-label="Volver"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h1 id="libTitle"></h1>
+    <span class="ib ghost"></span>
+  </div>
+  <div class="tabs" role="tablist">
+    <button id="tabT" class="on" role="tab">Temas</button>
+    <button id="tabW" role="tab">Palabras</button>
+  </div>
+  <div class="scrollv" id="libBody"></div>
+</section>
+
+<section class="view" id="v-set" aria-label="Ajustes">
+  <div class="bar">
+    <button class="ib back" aria-label="Volver"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h1>Ajustes</h1>
+    <span class="ib ghost"></span>
+  </div>
+  <div class="scrollv" id="setBody"></div>
+</section>
+
+</div>
+<script>
+{
+const RAW="@essen|Comida|Food\nm|Apfel|Äpfel|manzana|apple\nf|Banane|Bananen|plátano|banana\nf|Birne|Birnen|pera|pear\nf|Orange|Orangen|naranja|orange\nf|Zitrone|Zitronen|limón|lemon\nf|Erdbeere|Erdbeeren|fresa|strawberry\nf|Traube|Trauben|uva|grape\nf|Kirsche|Kirschen|cereza|cherry\nm|Pfirsich|Pfirsiche|durazno|peach\nf|Ananas|Ananas|piña|pineapple\nf|Kartoffel|Kartoffeln|papa|potato\nf|Tomate|Tomaten|jitomate|tomato\nf|Gurke|Gurken|pepino|cucumber\nf|Zwiebel|Zwiebeln|cebolla|onion\nm|Knoblauch||ajo|garlic\nf|Karotte|Karotten|zanahoria|carrot\nm|Salat|Salate|ensalada / lechuga|salad / lettuce\nn|Gemüse||verduras|vegetables\nn|Obst||fruta|fruit\nn|Brot|Brote|pan|bread\nn|Brötchen|Brötchen|bolillo|bread roll\nm|Käse|Käse|queso|cheese\nf|Butter||mantequilla|butter\nf|Milch||leche|milk\nn|Ei|Eier|huevo|egg\nn|Fleisch||carne|meat\nn|Hähnchen|Hähnchen|pollo|chicken\nm|Fisch|Fische|pescado|fish\nf|Wurst|Würste|salchicha|sausage\nm|Schinken|Schinken|jamón|ham\nm|Reis||arroz|rice\nf|Nudel|Nudeln|fideo / pasta|noodle\nf|Suppe|Suppen|sopa|soup\nf|Soße|Soßen|salsa|sauce\nn|Salz|Salze|sal|salt\nm|Pfeffer||pimienta|pepper\nm|Zucker||azúcar|sugar\nn|Mehl||harina|flour\nm|Honig||miel|honey\nn|Müsli|Müslis|granola / muesli|muesli\nm|Joghurt|Joghurts|yogur|yogurt|n\nm|Kuchen|Kuchen|pastel|cake\nf|Torte|Torten|pastel de capas|gateau\nn|Eis||helado|ice cream\nf|Schokolade|Schokoladen|chocolate|chocolate\nm|Keks|Kekse|galleta|cookie|n\nf|Pizza|Pizzas|pizza|pizza\nn|Frühstück|Frühstücke|desayuno|breakfast\nn|Mittagessen|Mittagessen|comida (mediodía)|lunch\nn|Abendessen|Abendessen|cena|dinner\nf|Mahlzeit|Mahlzeiten|tiempo de comida|meal\nn|Rezept|Rezepte|receta|recipe\nm|Nachtisch|Nachtische|postre|dessert\nf|Nuss|Nüsse|nuez|nut\nf|Bohne|Bohnen|frijol|bean\nm|Pilz|Pilze|hongo|mushroom\nm|Senf||mostaza|mustard\nn|Öl|Öle|aceite|oil\nm|Essig||vinagre|vinegar\n@trinken|Bebidas y restaurante|Drinks & restaurant\nn|Wasser|Wasser|agua|water\nm|Kaffee|Kaffees|café|coffee\nm|Tee|Tees|té|tea\nm|Saft|Säfte|jugo|juice\nn|Bier|Biere|cerveza|beer\nm|Wein|Weine|vino|wine\nm|Sekt|Sekte|vino espumoso|sparkling wine\nm|Schnaps|Schnäpse|aguardiente|schnapps\nf|Limonade|Limonaden|refresco / limonada|lemonade\nf|Cola|Colas|refresco de cola|cola|n\nn|Getränk|Getränke|bebida|drink\nf|Flasche|Flaschen|botella|bottle\nn|Glas|Gläser|vaso|glass\nf|Tasse|Tassen|taza|cup\nm|Becher|Becher|vaso / taza sin asa|mug\nm|Teller|Teller|plato|plate\nf|Schüssel|Schüsseln|tazón|bowl\nn|Besteck|Bestecke|cubiertos|cutlery\nn|Messer|Messer|cuchillo|knife\nf|Gabel|Gabeln|tenedor|fork\nm|Löffel|Löffel|cuchara|spoon\nf|Serviette|Servietten|servilleta|napkin\nm|Strohhalm|Strohhalme|popote|straw\nn|Restaurant|Restaurants|restaurante|restaurant\nn|Café|Cafés|cafetería|café\nf|Bar|Bars|bar|bar\nf|Kneipe|Kneipen|cantina / bar|pub\nf|Speisekarte|Speisekarten|menú / carta|menu\nf|Rechnung|Rechnungen|cuenta|bill\nn|Trinkgeld|Trinkgelder|propina|tip\nm|Kellner|Kellner|mesero|waiter\nf|Kellnerin|Kellnerinnen|mesera|waitress\nm|Koch|Köche|cocinero|cook\nf|Bestellung|Bestellungen|pedido|order\nf|Vorspeise|Vorspeisen|entrada|starter\nf|Hauptspeise|Hauptspeisen|plato fuerte|main course\nm|Durst||sed|thirst\nm|Hunger||hambre|hunger\nm|Geschmack|Geschmäcker|sabor|taste\nm|Tisch|Tische|mesa|table\n@haus|Casa|Home\nn|Haus|Häuser|casa|house\nf|Wohnung|Wohnungen|departamento|apartment\nn|Zimmer|Zimmer|cuarto|room\nf|Küche|Küchen|cocina|kitchen\nn|Bad|Bäder|baño|bathroom\nn|Schlafzimmer|Schlafzimmer|recámara|bedroom\nn|Wohnzimmer|Wohnzimmer|sala|living room\nm|Flur|Flure|pasillo|hallway\nf|Treppe|Treppen|escalera|stairs\nm|Keller|Keller|sótano|basement\nm|Garten|Gärten|jardín|garden\nm|Balkon|Balkone|balcón|balcony\nf|Tür|Türen|puerta|door\nn|Fenster|Fenster|ventana|window\nf|Wand|Wände|pared|wall\nm|Boden|Böden|piso / suelo|floor\nf|Decke|Decken|techo / cobija|ceiling / blanket\nn|Dach|Dächer|tejado|roof\nm|Stuhl|Stühle|silla|chair\nn|Sofa|Sofas|sofá|sofa\nn|Bett|Betten|cama|bed\nm|Schrank|Schränke|clóset / armario|wardrobe\nn|Regal|Regale|estante|shelf\nf|Lampe|Lampen|lámpara|lamp\nm|Spiegel|Spiegel|espejo|mirror\nm|Teppich|Teppiche|alfombra|rug\nn|Kissen|Kissen|almohada / cojín|pillow\nm|Vorhang|Vorhänge|cortina|curtain\nf|Uhr|Uhren|reloj|clock\nf|Dusche|Duschen|regadera|shower\nf|Badewanne|Badewannen|tina|bathtub\nf|Toilette|Toiletten|inodoro|toilet\nn|Waschbecken|Waschbecken|lavabo|washbasin\nn|Handtuch|Handtücher|toalla|towel\nf|Seife|Seifen|jabón|soap\nf|Zahnbürste|Zahnbürsten|cepillo de dientes|toothbrush\nf|Waschmaschine|Waschmaschinen|lavadora|washing machine\nm|Kühlschrank|Kühlschränke|refrigerador|fridge\nm|Herd|Herde|estufa|stove\nm|Ofen|Öfen|horno|oven\nf|Mikrowelle|Mikrowellen|microondas|microwave\nf|Spülmaschine|Spülmaschinen|lavavajillas|dishwasher\nf|Kaffeemaschine|Kaffeemaschinen|cafetera|coffee maker\nm|Topf|Töpfe|olla|pot\nf|Pfanne|Pfannen|sartén|pan\nm|Schlüssel|Schlüssel|llave|key\nf|Heizung|Heizungen|calefacción|heating\nf|Miete|Mieten|renta|rent\nm|Nachbar|Nachbarn|vecino|neighbor\nm|Müll||basura|trash\n@familie|Familia y personas|Family & people\nf|Familie|Familien|familia|family\nf|Mutter|Mütter|madre|mother\nm|Vater|Väter|padre|father\nm|Bruder|Brüder|hermano|brother\nf|Schwester|Schwestern|hermana|sister\nm|Sohn|Söhne|hijo|son\nf|Tochter|Töchter|hija|daughter\nn|Kind|Kinder|niño|child\nn|Baby|Babys|bebé|baby\nf|Oma|Omas|abuela|grandma\nm|Opa|Opas|abuelo|grandpa\nf|Großmutter|Großmütter|abuela|grandmother\nm|Großvater|Großväter|abuelo|grandfather\nm|Onkel|Onkel|tío|uncle\nf|Tante|Tanten|tía|aunt\nm|Cousin|Cousins|primo|cousin (m)\nf|Cousine|Cousinen|prima|cousin (f)\nm|Neffe|Neffen|sobrino|nephew\nf|Nichte|Nichten|sobrina|niece\nm|Enkel|Enkel|nieto|grandson\nf|Enkelin|Enkelinnen|nieta|granddaughter\nm|Mann|Männer|hombre / esposo|man / husband\nf|Frau|Frauen|mujer / esposa|woman / wife\nm|Junge|Jungen|niño (chico)|boy\nn|Mädchen|Mädchen|niña|girl\nm|Freund|Freunde|amigo / novio|friend / boyfriend\nf|Freundin|Freundinnen|amiga / novia|friend / girlfriend\nm|Partner|Partner|pareja|partner\nn|Paar|Paare|pareja (dos)|couple\nf|Beziehung|Beziehungen|relación|relationship\nf|Hochzeit|Hochzeiten|boda|wedding\nf|Ehe|Ehen|matrimonio|marriage\nm|Ehemann|Ehemänner|esposo|husband\nf|Ehefrau|Ehefrauen|esposa|wife\nm|Mensch|Menschen|ser humano|human being\nf|Person|Personen|persona|person\nm|Gast|Gäste|invitado|guest\nm|Zwilling|Zwillinge|gemelo|twin\nf|Geburt|Geburten|nacimiento|birth\nm|Geburtstag|Geburtstage|cumpleaños|birthday\nn|Alter|Alter|edad|age\nf|Jugend||juventud|youth\nm|Name|Namen|nombre|name\nm|Vorname|Vornamen|nombre de pila|first name\nm|Nachname|Nachnamen|apellido|surname\n@koerper|Cuerpo y salud|Body & health\nm|Körper|Körper|cuerpo|body\nm|Kopf|Köpfe|cabeza|head\nn|Gesicht|Gesichter|cara|face\nn|Auge|Augen|ojo|eye\nn|Ohr|Ohren|oreja|ear\nf|Nase|Nasen|nariz|nose\nm|Mund|Münder|boca|mouth\nf|Lippe|Lippen|labio|lip\nm|Zahn|Zähne|diente|tooth\nf|Zunge|Zungen|lengua|tongue\nn|Kinn|Kinne|barbilla|chin\nf|Stirn|Stirnen|frente|forehead\nf|Wange|Wangen|mejilla|cheek\nn|Haar|Haare|pelo|hair\nm|Hals|Hälse|cuello / garganta|neck / throat\nf|Schulter|Schultern|hombro|shoulder\nf|Brust|Brüste|pecho|chest\nm|Arm|Arme|brazo|arm\nm|Ellbogen|Ellbogen|codo|elbow\nf|Hand|Hände|mano|hand\nm|Finger|Finger|dedo|finger\nm|Daumen|Daumen|pulgar|thumb\nm|Nagel|Nägel|uña / clavo|nail\nm|Bauch|Bäuche|panza|belly\nm|Rücken|Rücken|espalda|back\nn|Bein|Beine|pierna|leg\nn|Knie|Knie|rodilla|knee\nm|Fuß|Füße|pie|foot\nm|Zeh|Zehen|dedo del pie|toe\nn|Herz|Herzen|corazón|heart\nf|Lunge|Lungen|pulmón|lung\nn|Blut||sangre|blood\nf|Haut|Häute|piel|skin\nm|Knochen|Knochen|hueso|bone\nn|Gehirn|Gehirne|cerebro|brain\nm|Magen|Mägen|estómago|stomach\nm|Arzt|Ärzte|médico|doctor\nf|Ärztin|Ärztinnen|médica|doctor (f)\nn|Krankenhaus|Krankenhäuser|hospital|hospital\nf|Apotheke|Apotheken|farmacia|pharmacy\nn|Medikament|Medikamente|medicamento|medicine\nf|Tablette|Tabletten|pastilla|pill\nf|Krankheit|Krankheiten|enfermedad|illness\nn|Fieber||fiebre|fever\nm|Schmerz|Schmerzen|dolor|pain\nf|Erkältung|Erkältungen|resfriado|cold\nm|Husten||tos|cough\nf|Grippe|Grippen|gripa|flu\nf|Verletzung|Verletzungen|lesión|injury\nf|Wunde|Wunden|herida|wound\nf|Gesundheit||salud|health\nf|Allergie|Allergien|alergia|allergy\nm|Notfall|Notfälle|emergencia|emergency\nf|Brille|Brillen|lentes|glasses\n@kleidung|Ropa|Clothes\nf|Kleidung||ropa|clothing\nn|Hemd|Hemden|camisa|shirt\nn|T-Shirt|T-Shirts|playera|T-shirt\nf|Bluse|Blusen|blusa|blouse\nm|Pullover|Pullover|suéter|sweater\nf|Jacke|Jacken|chamarra|jacket\nm|Mantel|Mäntel|abrigo|coat\nf|Weste|Westen|chaleco|vest\nf|Hose|Hosen|pantalón|trousers\nf|Jeans|Jeans|jeans|jeans\nm|Rock|Röcke|falda|skirt\nn|Kleid|Kleider|vestido|dress\nm|Anzug|Anzüge|traje|suit\nn|Kostüm|Kostüme|disfraz / traje sastre|costume\nf|Krawatte|Krawatten|corbata|tie\nm|Schuh|Schuhe|zapato|shoe\nm|Turnschuh|Turnschuhe|tenis|sneaker\nm|Stiefel|Stiefel|bota|boot\nf|Sandale|Sandalen|sandalia|sandal\nf|Socke|Socken|calcetín|sock\nf|Strumpfhose|Strumpfhosen|medias|tights\nm|Hut|Hüte|sombrero|hat\nf|Mütze|Mützen|gorro|cap / beanie\nm|Schal|Schals|bufanda|scarf\nm|Handschuh|Handschuhe|guante|glove\nm|Gürtel|Gürtel|cinturón|belt\nf|Tasche|Taschen|bolsa / bolsillo|bag / pocket\nm|Rucksack|Rucksäcke|mochila|backpack\nf|Unterwäsche||ropa interior|underwear\nm|Schlafanzug|Schlafanzüge|pijama|pajamas\nm|Badeanzug|Badeanzüge|traje de baño|swimsuit\nf|Badehose|Badehosen|traje de baño (hombre)|swim trunks\nm|Knopf|Knöpfe|botón|button\nm|Reißverschluss|Reißverschlüsse|cierre|zipper\nf|Größe|Größen|talla|size\nf|Farbe|Farben|color|color\nm|Ring|Ringe|anillo|ring\nf|Kette|Ketten|collar / cadena|necklace / chain\nm|Ohrring|Ohrringe|arete|earring\nf|Sonnenbrille|Sonnenbrillen|lentes de sol|sunglasses\nm|Regenschirm|Regenschirme|paraguas|umbrella\nf|Umkleidekabine|Umkleidekabinen|probador|fitting room\nf|Mode|Moden|moda|fashion\nm|Stoff|Stoffe|tela|fabric\nf|Wolle||lana|wool\n@reise|Viajes y transporte|Travel & transport\nf|Reise|Reisen|viaje|trip\nm|Urlaub|Urlaube|vacaciones|vacation\nn|Flugzeug|Flugzeuge|avión|airplane\nm|Flughafen|Flughäfen|aeropuerto|airport\nm|Flug|Flüge|vuelo|flight\nm|Abflug|Abflüge|salida (vuelo)|departure (flight)\nf|Ankunft|Ankünfte|llegada|arrival\nf|Abfahrt|Abfahrten|salida|departure\nm|Zug|Züge|tren|train\nm|Bahnhof|Bahnhöfe|estación de tren|train station\nn|Gleis|Gleise|andén / vía|platform / track\nf|Fahrkarte|Fahrkarten|boleto|ticket\nn|Ticket|Tickets|boleto|ticket\nm|Bus|Busse|autobús / camión|bus\nf|Haltestelle|Haltestellen|parada|stop\nf|U-Bahn|U-Bahnen|metro|subway\nf|Straßenbahn|Straßenbahnen|tranvía|tram\nn|Auto|Autos|carro|car\nn|Taxi|Taxis|taxi|taxi\nn|Fahrrad|Fahrräder|bicicleta|bicycle\nn|Schiff|Schiffe|barco|ship\nn|Boot|Boote|lancha / bote|boat\nm|Koffer|Koffer|maleta|suitcase\nn|Gepäck||equipaje|luggage\nm|Pass|Pässe|pasaporte|passport\nn|Visum|Visa|visa|visa\nf|Grenze|Grenzen|frontera|border\nm|Zoll|Zölle|aduana|customs\nf|Karte|Karten|mapa / tarjeta|map / card\nm|Stadtplan|Stadtpläne|mapa de la ciudad|city map\nm|Tourist|Touristen|turista|tourist\nf|Verspätung|Verspätungen|retraso|delay\nm|Fahrplan|Fahrpläne|horario|timetable\nm|Sitzplatz|Sitzplätze|asiento|seat\nm|Anschluss|Anschlüsse|conexión|connection\nf|Autobahn|Autobahnen|autopista|motorway\nf|Tankstelle|Tankstellen|gasolinera|gas station\nm|Führerschein|Führerscheine|licencia de manejo|driver's license\nm|Stau|Staus|tráfico|traffic jam\nf|Ampel|Ampeln|semáforo|traffic light\nn|Hotel|Hotels|hotel|hotel\nf|Unterkunft|Unterkünfte|alojamiento|accommodation\nf|Jugendherberge|Jugendherbergen|albergue juvenil|youth hostel\nf|Rezeption|Rezeptionen|recepción|reception\nf|Reservierung|Reservierungen|reservación|reservation\nn|Doppelzimmer|Doppelzimmer|habitación doble|double room\nn|Einzelzimmer|Einzelzimmer|habitación sencilla|single room\nm|Aufzug|Aufzüge|elevador|elevator\nf|Sehenswürdigkeit|Sehenswürdigkeiten|lugar turístico|sight\nm|Ausflug|Ausflüge|excursión|excursion\n@stadt|Ciudad|City\nf|Stadt|Städte|ciudad|city\nn|Dorf|Dörfer|pueblo|village\nf|Straße|Straßen|calle|street\nm|Platz|Plätze|plaza / lugar|square / place\nf|Brücke|Brücken|puente|bridge\nm|Park|Parks|parque|park\nf|Kirche|Kirchen|iglesia|church\nm|Dom|Dome|catedral|cathedral\nn|Museum|Museen|museo|museum\nn|Theater|Theater|teatro|theater\nn|Kino|Kinos|cine|cinema\nf|Bank|Banken|banco|bank\nf|Post||oficina de correos|post office\nn|Rathaus|Rathäuser|ayuntamiento|town hall\nf|Polizei||policía|police\nf|Feuerwehr|Feuerwehren|bomberos|fire brigade\nf|Bibliothek|Bibliotheken|biblioteca|library\nm|Supermarkt|Supermärkte|supermercado|supermarket\nn|Geschäft|Geschäfte|tienda / negocio|shop / business\nm|Laden|Läden|tienda|store\nm|Markt|Märkte|mercado|market\nm|Kiosk|Kioske|puesto de periódicos|kiosk\nf|Bäckerei|Bäckereien|panadería|bakery\nf|Metzgerei|Metzgereien|carnicería|butcher's\nf|Buchhandlung|Buchhandlungen|librería|bookshop\nn|Kaufhaus|Kaufhäuser|tienda departamental|department store\nm|Friseur|Friseure|peluquero|hairdresser\nn|Gebäude|Gebäude|edificio|building\nn|Hochhaus|Hochhäuser|rascacielos|high-rise\nm|Turm|Türme|torre|tower\nn|Schloss|Schlösser|castillo / cerradura|castle / lock\nm|Brunnen|Brunnen|fuente / pozo|fountain / well\nn|Stadion|Stadien|estadio|stadium\nf|Ecke|Ecken|esquina|corner\nf|Kreuzung|Kreuzungen|cruce|intersection\nm|Bürgersteig|Bürgersteige|banqueta|sidewalk\nf|Fußgängerzone|Fußgängerzonen|zona peatonal|pedestrian zone\nn|Zentrum|Zentren|centro|center\nm|Stadtteil|Stadtteile|barrio|district\nn|Viertel|Viertel|barrio / cuarto|quarter\nf|Adresse|Adressen|dirección|address\nm|Parkplatz|Parkplätze|estacionamiento|parking\nm|Spielplatz|Spielplätze|parque infantil|playground\n@arbeit|Trabajo y oficina|Work & office\nf|Arbeit|Arbeiten|trabajo|work\nm|Beruf|Berufe|profesión|profession\nf|Stelle|Stellen|puesto|position\nm|Job|Jobs|chamba / trabajo|job\nn|Büro|Büros|oficina|office\nf|Firma|Firmen|empresa|company\nn|Unternehmen|Unternehmen|empresa|enterprise\nm|Chef|Chefs|jefe|boss\nf|Chefin|Chefinnen|jefa|boss (f)\nm|Kollege|Kollegen|colega|colleague\nf|Kollegin|Kolleginnen|colega (f)|colleague (f)\nm|Mitarbeiter|Mitarbeiter|empleado|employee\nm|Kunde|Kunden|cliente|customer\nf|Besprechung|Besprechungen|reunión|meeting\nf|Sitzung|Sitzungen|junta|session\nf|Konferenz|Konferenzen|conferencia|conference\nm|Termin|Termine|cita|appointment\nn|Gehalt|Gehälter|sueldo|salary\nm|Lohn|Löhne|salario|wage\nf|Bewerbung|Bewerbungen|solicitud de empleo|job application\nm|Lebenslauf|Lebensläufe|currículum|CV\nn|Vorstellungsgespräch|Vorstellungsgespräche|entrevista de trabajo|job interview\nm|Vertrag|Verträge|contrato|contract\nf|Aufgabe|Aufgaben|tarea|task\nn|Projekt|Projekte|proyecto|project\nm|Schreibtisch|Schreibtische|escritorio|desk\nm|Drucker|Drucker|impresora|printer\nn|Papier|Papiere|papel|paper\nm|Kugelschreiber|Kugelschreiber|pluma|ballpoint pen\nf|Akte|Akten|expediente|file\nn|Dokument|Dokumente|documento|document\nf|Unterschrift|Unterschriften|firma|signature\nf|Pause|Pausen|descanso|break\nf|Überstunde|Überstunden|hora extra|overtime hour\nm|Feierabend|Feierabende|fin de la jornada|end of the workday\nf|Erfahrung|Erfahrungen|experiencia|experience\nm|Erfolg|Erfolge|éxito|success\nn|Ziel|Ziele|meta|goal\nf|Lösung|Lösungen|solución|solution\nn|Problem|Probleme|problema|problem\nf|Abteilung|Abteilungen|departamento (área)|department\nn|Team|Teams|equipo|team\nf|Ausbildung|Ausbildungen|formación profesional|vocational training\nn|Praktikum|Praktika|prácticas|internship\nf|Kündigung|Kündigungen|despido / renuncia|dismissal / notice\n@schule|Escuela y estudio|School & study\nf|Schule|Schulen|escuela|school\nf|Universität|Universitäten|universidad|university\nf|Klasse|Klassen|grupo / clase|class\nm|Unterricht||clase|lessons\nm|Lehrer|Lehrer|maestro|teacher\nf|Lehrerin|Lehrerinnen|maestra|teacher (f)\nm|Schüler|Schüler|alumno|pupil\nf|Schülerin|Schülerinnen|alumna|pupil (f)\nm|Student|Studenten|estudiante|student\nf|Studentin|Studentinnen|estudiante (f)|student (f)\nn|Studium|Studien|carrera / estudios|studies\nn|Buch|Bücher|libro|book\nn|Heft|Hefte|cuaderno|notebook\nf|Seite|Seiten|página|page\nm|Text|Texte|texto|text\nn|Wörterbuch|Wörterbücher|diccionario|dictionary\nn|Wort|Wörter|palabra|word\nm|Satz|Sätze|oración|sentence\nf|Sprache|Sprachen|idioma|language\nf|Grammatik|Grammatiken|gramática|grammar\nf|Prüfung|Prüfungen|examen|exam\nm|Test|Tests|prueba|test\nf|Note|Noten|calificación|grade\nf|Hausaufgabe|Hausaufgaben|tarea|homework\nf|Frage|Fragen|pregunta|question\nf|Antwort|Antworten|respuesta|answer\nm|Fehler|Fehler|error|mistake\nf|Übung|Übungen|ejercicio|exercise\nf|Tafel|Tafeln|pizarrón|blackboard\nf|Kreide|Kreiden|gis|chalk\nm|Bleistift|Bleistifte|lápiz|pencil\nm|Radiergummi|Radiergummis|goma|eraser\nn|Lineal|Lineale|regla|ruler\nf|Schere|Scheren|tijeras|scissors\nm|Kurs|Kurse|curso|course\nf|Vorlesung|Vorlesungen|clase magistral|lecture\nn|Fach|Fächer|materia|subject\nf|Mathematik||matemáticas|mathematics\nf|Geschichte|Geschichten|historia|history / story\nf|Wissenschaft|Wissenschaften|ciencia|science\nn|Wissen||conocimiento|knowledge\nf|Bildung||educación|education\nn|Zeugnis|Zeugnisse|boleta / certificado|report card\nm|Abschluss|Abschlüsse|título|degree\nn|Stipendium|Stipendien|beca|scholarship\n@natur|Naturaleza y clima|Nature & weather\nf|Natur||naturaleza|nature\nn|Wetter||clima (tiempo)|weather\nf|Sonne|Sonnen|sol|sun\nm|Mond|Monde|luna|moon\nm|Stern|Sterne|estrella|star\nm|Himmel|Himmel|cielo|sky\nf|Wolke|Wolken|nube|cloud\nm|Regen||lluvia|rain\nm|Schnee||nieve|snow\nm|Wind|Winde|viento|wind\nn|Gewitter|Gewitter|tormenta eléctrica|thunderstorm\nm|Sturm|Stürme|tormenta|storm\nm|Blitz|Blitze|relámpago|lightning\nm|Donner|Donner|trueno|thunder\nm|Nebel|Nebel|niebla|fog\nm|Regenbogen|Regenbögen|arcoíris|rainbow\nf|Temperatur|Temperaturen|temperatura|temperature\nn|Klima|Klimas|clima|climate\nm|Baum|Bäume|árbol|tree\nf|Blume|Blumen|flor|flower\nf|Pflanze|Pflanzen|planta|plant\nn|Blatt|Blätter|hoja|leaf\nn|Gras|Gräser|pasto|grass\nm|Wald|Wälder|bosque|forest\nm|Berg|Berge|montaña|mountain\nm|Hügel|Hügel|colina|hill\nn|Tal|Täler|valle|valley\nm|Fluss|Flüsse|río|river\nm|See|Seen|lago|lake\nn|Meer|Meere|mar|sea\nm|Ozean|Ozeane|océano|ocean\nf|Welle|Wellen|ola|wave\nm|Strand|Strände|playa|beach\nf|Küste|Küsten|costa|coast\nn|Ufer|Ufer|orilla|shore\nf|Insel|Inseln|isla|island\nf|Wüste|Wüsten|desierto|desert\nm|Vulkan|Vulkane|volcán|volcano\nm|Stein|Steine|piedra|stone\nm|Sand||arena|sand\nf|Erde||tierra|earth\nn|Feuer|Feuer|fuego|fire\nf|Luft||aire|air\nf|Landschaft|Landschaften|paisaje|landscape\nf|Umwelt||medio ambiente|environment\n@tiere|Animales|Animals\nn|Tier|Tiere|animal|animal\nm|Hund|Hunde|perro|dog\nf|Katze|Katzen|gato|cat\nn|Pferd|Pferde|caballo|horse\nf|Kuh|Kühe|vaca|cow\nn|Schwein|Schweine|cerdo|pig\nn|Schaf|Schafe|oveja|sheep\nf|Ziege|Ziegen|cabra|goat\nn|Huhn|Hühner|gallina|hen\nm|Hahn|Hähne|gallo|rooster\nf|Ente|Enten|pato|duck\nm|Vogel|Vögel|pájaro|bird\nf|Maus|Mäuse|ratón|mouse\nm|Hase|Hasen|liebre|hare\nn|Kaninchen|Kaninchen|conejo|rabbit\nn|Eichhörnchen|Eichhörnchen|ardilla|squirrel\nm|Bär|Bären|oso|bear\nm|Wolf|Wölfe|lobo|wolf\nm|Fuchs|Füchse|zorro|fox\nm|Löwe|Löwen|león|lion\nm|Tiger|Tiger|tigre|tiger\nm|Elefant|Elefanten|elefante|elephant\nm|Affe|Affen|mono|monkey\nf|Giraffe|Giraffen|jirafa|giraffe\nn|Zebra|Zebras|cebra|zebra\nn|Kamel|Kamele|camello|camel\nn|Krokodil|Krokodile|cocodrilo|crocodile\nf|Schlange|Schlangen|serpiente / fila|snake / queue\nm|Frosch|Frösche|rana|frog\nf|Schildkröte|Schildkröten|tortuga|turtle\nm|Hai|Haie|tiburón|shark\nm|Wal|Wale|ballena|whale\nm|Delfin|Delfine|delfín|dolphin\nm|Pinguin|Pinguine|pingüino|penguin\nm|Adler|Adler|águila|eagle\nf|Eule|Eulen|búho|owl\nm|Papagei|Papageien|loro|parrot\nn|Insekt|Insekten|insecto|insect\nf|Biene|Bienen|abeja|bee\nf|Fliege|Fliegen|mosca|fly\nf|Mücke|Mücken|mosquito|mosquito\nf|Spinne|Spinnen|araña|spider\nf|Ameise|Ameisen|hormiga|ant\nm|Schmetterling|Schmetterlinge|mariposa|butterfly\nn|Nest|Nester|nido|nest\nm|Schwanz|Schwänze|cola|tail\nm|Flügel|Flügel|ala|wing\nn|Fell|Felle|pelaje|fur\nm|Zoo|Zoos|zoológico|zoo\n@zeit|Tiempo y calendario|Time & calendar\nf|Zeit|Zeiten|tiempo|time\nf|Uhrzeit|Uhrzeiten|hora (del reloj)|time of day\nf|Stunde|Stunden|hora|hour\nf|Minute|Minuten|minuto|minute\nf|Sekunde|Sekunden|segundo|second\nm|Augenblick|Augenblicke|instante|moment\nm|Moment|Momente|momento|moment\nm|Tag|Tage|día|day\nf|Woche|Wochen|semana|week\nn|Wochenende|Wochenenden|fin de semana|weekend\nm|Monat|Monate|mes|month\nn|Jahr|Jahre|año|year\nn|Jahrzehnt|Jahrzehnte|década|decade\nn|Jahrhundert|Jahrhunderte|siglo|century\nm|Morgen|Morgen|mañana|morning\nm|Vormittag|Vormittage|media mañana|late morning\nm|Mittag|Mittage|mediodía|noon\nm|Nachmittag|Nachmittage|tarde|afternoon\nm|Abend|Abende|noche (temprano)|evening\nf|Nacht|Nächte|noche|night\nf|Mitternacht||medianoche|midnight\nm|Montag|Montage|lunes|Monday\nm|Dienstag|Dienstage|martes|Tuesday\nm|Mittwoch|Mittwoche|miércoles|Wednesday\nm|Donnerstag|Donnerstage|jueves|Thursday\nm|Freitag|Freitage|viernes|Friday\nm|Samstag|Samstage|sábado|Saturday\nm|Sonntag|Sonntage|domingo|Sunday\nm|Januar||enero|January\nm|Mai||mayo|May\nm|August||agosto|August\nm|Dezember||diciembre|December\nm|Frühling|Frühlinge|primavera|spring\nm|Sommer|Sommer|verano|summer\nm|Herbst|Herbste|otoño|autumn\nm|Winter|Winter|invierno|winter\nf|Jahreszeit|Jahreszeiten|estación del año|season\nm|Kalender|Kalender|calendario|calendar\nn|Datum|Daten|fecha|date\nf|Frist|Fristen|plazo|deadline\nm|Feiertag|Feiertage|día festivo|public holiday\nm|Silvester|Silvester|Nochevieja|New Year's Eve|n\nf|Verabredung|Verabredungen|cita (con alguien)|date\nm|Anfang|Anfänge|comienzo|beginning\nn|Ende|Enden|final|end\nf|Vergangenheit||pasado|past\nf|Gegenwart||presente|present\nf|Zukunft||futuro|future\n@technik|Tecnología|Technology\nm|Computer|Computer|computadora|computer\nm|Laptop|Laptops|laptop|laptop|n\nn|Handy|Handys|celular|mobile phone\nn|Smartphone|Smartphones|smartphone|smartphone\nn|Tablet|Tablets|tableta|tablet\nm|Bildschirm|Bildschirme|pantalla|screen\nf|Tastatur|Tastaturen|teclado|keyboard\nn|Internet||internet|internet\nf|E-Mail|E-Mails|correo electrónico|email|n\nf|Nachricht|Nachrichten|mensaje / noticia|message / news\nn|Passwort|Passwörter|contraseña|password\nm|Benutzer|Benutzer|usuario|user\nn|Programm|Programme|programa|program\nf|App|Apps|app|app\nf|Datei|Dateien|archivo|file\nm|Ordner|Ordner|carpeta|folder\nf|Webseite|Webseiten|página web|web page\nm|Link|Links|enlace|link\nf|Suchmaschine|Suchmaschinen|buscador|search engine\nn|Netzwerk|Netzwerke|red|network\nm|Server|Server|servidor|server\nn|Update|Updates|actualización|update\nf|Software||software|software\nf|Hardware||hardware|hardware\nf|Festplatte|Festplatten|disco duro|hard drive\nm|Speicher|Speicher|memoria|memory / storage\nm|Chip|Chips|chip|chip\nn|Kabel|Kabel|cable|cable\nm|Akku|Akkus|batería (recargable)|rechargeable battery\nf|Batterie|Batterien|pila|battery\nn|Ladegerät|Ladegeräte|cargador|charger\nf|Steckdose|Steckdosen|contacto (enchufe)|power socket\nm|Strom||electricidad|electricity\nf|Kamera|Kameras|cámara|camera\nn|Foto|Fotos|foto|photo\nn|Video|Videos|video|video\nm|Lautsprecher|Lautsprecher|bocina|speaker\nm|Kopfhörer|Kopfhörer|audífonos|headphones\nm|Fernseher|Fernseher|televisión|TV set\nn|Radio|Radios|radio|radio|m\nm|Roboter|Roboter|robot|robot\nf|Technik|Techniken|tecnología / técnica|technology\nn|Gerät|Geräte|aparato|device\n@freizeit|Tiempo libre y deporte|Leisure & sport\nf|Freizeit||tiempo libre|free time\nn|Hobby|Hobbys|pasatiempo|hobby\nm|Sport||deporte|sport\nn|Spiel|Spiele|juego / partido|game / match\nm|Ball|Bälle|pelota|ball\nm|Fußball|Fußbälle|fútbol / balón|soccer\nf|Mannschaft|Mannschaften|equipo|team\nm|Spieler|Spieler|jugador|player\nn|Tor|Tore|gol / portería|goal\nm|Sieg|Siege|victoria|victory\nf|Niederlage|Niederlagen|derrota|defeat\nn|Training|Trainings|entrenamiento|training\nn|Schwimmbad|Schwimmbäder|alberca|swimming pool\nn|Fitnessstudio|Fitnessstudios|gimnasio|gym\nm|Verein|Vereine|club|club\nn|Rennen|Rennen|carrera|race\nf|Musik||música|music\nn|Lied|Lieder|canción|song\nf|Gitarre|Gitarren|guitarra|guitar\nn|Klavier|Klaviere|piano|piano\nn|Konzert|Konzerte|concierto|concert\nm|Film|Filme|película|film\nf|Serie|Serien|serie|series\nm|Roman|Romane|novela|novel\nn|Gedicht|Gedichte|poema|poem\nn|Bild|Bilder|imagen / cuadro|picture\nf|Kunst|Künste|arte|art\nf|Ausstellung|Ausstellungen|exposición|exhibition\nf|Zeitung|Zeitungen|periódico|newspaper\nf|Zeitschrift|Zeitschriften|revista|magazine\nn|Fest|Feste|fiesta / festividad|celebration\nf|Party|Partys|fiesta|party\nm|Tanz|Tänze|baile|dance\nm|Spaziergang|Spaziergänge|paseo|walk\nf|Wanderung|Wanderungen|caminata|hike\nn|Zelt|Zelte|casa de campaña|tent\nn|Schach||ajedrez|chess\nn|Puzzle|Puzzles|rompecabezas|jigsaw\n@gefuehle|Emociones e ideas|Feelings & ideas\nn|Gefühl|Gefühle|sentimiento|feeling\nf|Liebe||amor|love\nf|Freude|Freuden|alegría|joy\nn|Glück||suerte / felicidad|luck / happiness\nf|Angst|Ängste|miedo|fear\nf|Wut||rabia|rage\nm|Ärger||enojo|anger\nf|Trauer||duelo|grief\nm|Spaß|Späße|diversión|fun\nf|Hoffnung|Hoffnungen|esperanza|hope\nm|Mut||valor|courage\nm|Stolz||orgullo|pride\nf|Scham||vergüenza|shame\nn|Vertrauen||confianza|trust\nf|Sorge|Sorgen|preocupación|worry\nm|Stress||estrés|stress\nf|Ruhe||calma|calm\nf|Geduld||paciencia|patience\nf|Freiheit|Freiheiten|libertad|freedom\nf|Wahrheit|Wahrheiten|verdad|truth\nf|Lüge|Lügen|mentira|lie\nm|Traum|Träume|sueño|dream\nn|Leben|Leben|vida|life\nm|Tod|Tode|muerte|death\nf|Idee|Ideen|idea|idea\nf|Meinung|Meinungen|opinión|opinion\nm|Grund|Gründe|razón|reason\nn|Recht|Rechte|derecho|right\nf|Pflicht|Pflichten|deber|duty\nf|Erinnerung|Erinnerungen|recuerdo|memory\nf|Gewohnheit|Gewohnheiten|hábito|habit\nm|Wunsch|Wünsche|deseo|wish\nm|Respekt||respeto|respect\nf|Freundschaft|Freundschaften|amistad|friendship\nf|Überraschung|Überraschungen|sorpresa|surprise\nn|Geheimnis|Geheimnisse|secreto|secret\nm|Frieden||paz|peace\nm|Krieg|Kriege|guerra|war\nf|Gefahr|Gefahren|peligro|danger\nf|Sicherheit|Sicherheiten|seguridad|safety\nn|Ergebnis|Ergebnisse|resultado|result\nf|Entscheidung|Entscheidungen|decisión|decision\nf|Möglichkeit|Möglichkeiten|posibilidad|possibility\nm|Unterschied|Unterschiede|diferencia|difference\nn|Beispiel|Beispiele|ejemplo|example\n@geld|Dinero y compras|Money & shopping\nn|Geld|Gelder|dinero|money\nm|Euro|Euros|euro|euro\nm|Cent|Cents|centavo|cent\nm|Preis|Preise|precio|price\nf|Kasse|Kassen|caja|checkout\nn|Bargeld||efectivo|cash\nf|Kreditkarte|Kreditkarten|tarjeta de crédito|credit card\nn|Konto|Konten|cuenta|account\nf|Überweisung|Überweisungen|transferencia|bank transfer\nm|Geldautomat|Geldautomaten|cajero automático|ATM\nf|Münze|Münzen|moneda|coin\nm|Schein|Scheine|billete|banknote\nn|Portemonnaie|Portemonnaies|cartera|wallet\nf|Geldbörse|Geldbörsen|monedero|purse\nf|Quittung|Quittungen|recibo|receipt\nm|Kassenbon|Kassenbons|ticket de compra|till receipt\nn|Angebot|Angebote|oferta|offer\nm|Rabatt|Rabatte|descuento|discount\nm|Einkauf|Einkäufe|compra|purchase\nm|Einkaufswagen|Einkaufswagen|carrito|shopping cart\nf|Tüte|Tüten|bolsa|bag\nf|Packung|Packungen|paquete|pack\nn|Paket|Pakete|paquete (envío)|parcel\nf|Dose|Dosen|lata|can\nn|Stück|Stücke|pedazo / pieza|piece\nn|Kilo|Kilos|kilo|kilo\nf|Ware|Waren|mercancía|goods\nm|Verkäufer|Verkäufer|vendedor|salesperson\nf|Verkäuferin|Verkäuferinnen|vendedora|saleswoman\nf|Öffnungszeit|Öffnungszeiten|horario de apertura|opening time\nm|Umtausch||cambio (de producto)|exchange\nf|Garantie|Garantien|garantía|warranty\nf|Steuer|Steuern|impuesto|tax\nm|Kredit|Kredite|crédito|loan\nf|Schuld|Schulden|deuda / culpa|debt / guilt\nf|Marke|Marken|marca|brand\nf|Qualität|Qualitäten|calidad|quality\n";
+const ART={m:'der',f:'die',n:'das'};
+const TOPICS=[],ALL=[];
+let tk=null;
+for(const l of RAW.split('\n')){
+  if(!l.trim())continue;
+  const p=l.split('|');
+  if(l[0]==='@'){tk=p[0].slice(1);TOPICS.push({k:tk,es:p[1],en:p[2],n:0});continue}
+  ALL.push({k:p[1],g:p[0],w:p[1],pl:p[2],es:p[3],en:p[4],alt:p[5]||'',t:tk});
+  TOPICS[TOPICS.length-1].n++;
+}
+const BASES=ALL.filter(w=>w.w.length>=3).map(w=>({l:w.w.toLowerCase(),w}));
+const CAL=new Set(['Mittwoch','Januar','Mai','August','Dezember','Frühling','Sommer','Herbst','Winter']);
+const RULES=[['chen','n',1],['lein','n',1],['ung','f',1],['heit','f',1],['keit','f',1],['schaft','f',1],['ismus','m',1],['ling','m',1],['tät','f',1],['ion','f',1],['anz','f',1],['enz','f',1],['ment','n',0],['ei','f',0],['ie','f',0],['ik','f',0],['ur','f',0],['um','n',0],['o','n',0],['e','f',0]];
+
+const KEY='derdiedas.v1';
+const fresh=()=>({v:1,t:0,seq:0,seed:(Math.random()*1e9)|0,set:{n:6,rev:0,show:'always',lang:'es',hints:1,batch:12},on:{essen:1,trinken:1},x:{},p:{},c:[]});
+let S=fresh();
+try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(j&&j.v===1)S=Object.assign(fresh(),j,{set:Object.assign(fresh().set,j.set)})}catch(e){}
+
+let cur=null,mode='q',recent=[],reviewAll=false,busy=false,libTab='t',filt='act',query='',limit=150,addOpen=false,addG='m',resetArm=false,syncNote='Guardado en este navegador';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cap=s=>s?s[0].toUpperCase()+s.slice(1):s;
+
+function custom(){return S.c.map(c=>({k:'~'+c[1],g:c[0],w:c[1],pl:c[2],es:c[3],en:c[3],alt:'',t:'mine'}))}
+function nouns(){return custom().concat(ALL)}
+const tr=w=>S.set.lang==='en'?w.en:w.es;
+const st=k=>S.p[k]||[0,0,0];
+const isM=k=>st(k)[0]>=S.set.n;
+const topicOn=t=>t==='mine'?S.on.mine!==0:!!S.on[t];
+function active(){return nouns().filter(w=>topicOn(w.t)&&!S.x[w.k])}
+function hash(s){let h=S.seed;for(const c of s)h=Math.imul(h^c.charCodeAt(0),2654435761)>>>0;return h}
+
+let saveT=null;
+function save(){S.t=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}clearTimeout(saveT);saveT=setTimeout(push,2500)}
+
+function pick(){
+  const act=active();
+  if(!act.length)return {empty:'none'};
+  const un=act.filter(w=>!isM(w.k)),ma=act.filter(w=>isM(w.k));
+  const revP=[0,.1,.25][S.set.rev];
+  const fromM=ma.length&&(reviewAll||(un.length&&Math.random()<revP));
+  if(!un.length&&!fromM)return {empty:'done'};
+  let pool;
+  if(fromM)pool=ma;
+  else{
+    const seen=un.filter(w=>S.p[w.k]).sort((a,b)=>S.p[a.k][2]-S.p[b.k][2]);
+    const unseen=un.filter(w=>!S.p[w.k]).sort((a,b)=>hash(a.k)-hash(b.k));
+    pool=seen.concat(unseen).slice(0,S.set.batch);
+  }
+  const avoid=recent.slice(-Math.min(3,pool.length-1));
+  let cand=pool.filter(w=>!avoid.includes(w.k));if(!cand.length)cand=pool;
+  const wt=cand.map(w=>{const s=st(w.k);return 1+Math.min(s[1],4)*.5+(S.p[w.k]&&s[0]===0?1:0)});
+  let r=Math.random()*wt.reduce((a,b)=>a+b,0);
+  for(let i=0;i<cand.length;i++){r-=wt[i];if(r<=0)return cand[i]}
+  return cand[cand.length-1];
+}
+
+function segs(k,cls=''){const s=Math.min(st(k)[0],S.set.n);let h='';for(let i=0;i<S.set.n;i++)h+=`<i class="${i<s?'f':''}"></i>`;return `<div class="segs ${cls} ${s>=S.set.n?'done':''}">${h}</div>`}
+
+function hint(w){
+  const lw=w.w.toLowerCase();
+  let best=null;
+  for(const b of BASES){if(b.w.k!==w.k&&lw.endsWith(b.l)&&lw.length-b.l.length>=3&&(!best||b.l.length>best.l.length))best=b}
+  if(best){const b=best.w,ok=b.g===w.g||(w.alt&&b.g===w.alt);
+    return ok?`Compuesta: manda la última palabra, <b class="g-${b.g}">${ART[b.g]} ${esc(b.w)}</b>.`:`Termina en <b>${esc(b.w)}</b> (<span class="g-${b.g}">${ART[b.g]}</span>), pero esta es excepción.`}
+  if(CAL.has(w.w))return `Días, meses y estaciones son <b class="g-m">der</b>.`;
+  for(const [suf,g,strong] of RULES){
+    if(!lw.endsWith(suf)||lw.length<=suf.length+1)continue;
+    if(suf==='um'&&lw.endsWith('aum'))continue;
+    if(suf==='e'&&lw.endsWith('ee'))continue;
+    const ok=g===w.g||g===w.alt;
+    return `<b>-${suf}</b> → ${strong?'casi siempre':'muchas veces'} <b class="g-${g}">${ART[g]}</b>${ok?'.':', pero esta es excepción.'}`;
+  }
+  return '';
+}
+
+function counts(){const a=active();let m=0;for(const w of a)if(isM(w.k))m++;return {a:a.length,m}}
+function renderCount(){const c=counts();$('count').innerHTML=`<b>${c.m}</b> dominadas de ${c.a}`;
+  const on=TOPICS.filter(t=>S.on[t.k]).length+(S.c.length&&S.on.mine!==0?1:0);$('playTitle').textContent=on===1?'1 tema activo':on+' temas activos'}
+
+function showCard(){
+  const card=$('card');busy=false;mode='q';card.className='card';card.style.transform='';card.style.opacity='';
+  pillState();
+  cur=pick();
+  if(cur.empty){
+    mode='empty';
+    card.innerHTML=cur.empty==='none'
+      ?`<div class="empty"><h2>No hay palabras activas</h2><p>Activa al menos un tema para practicar.</p><button class="btn" data-act="lib">Elegir temas</button></div>`
+      :`<div class="empty"><h2>¡Dominaste todo!</h2><p>Todas las palabras activas están dominadas.</p><button class="btn" data-act="lib">Activar otro tema</button><button class="btn sec" data-act="rev">Repasar dominadas</button></div>`;
+    renderCount();return;
+  }
+  const w=cur,rev=isM(w.k);
+  card.innerHTML=`<div class="tint" id="tint"></div>${rev?'<div class="top-note">Repaso</div>':''}<div class="word">${esc(w.w)}</div><div class="tr">${S.set.show==='always'?esc(tr(w)):''}</div>${segs(w.k)}`;
+  void card.offsetWidth;card.classList.add('enter');
+  renderCount();
+}
+
+function reveal(g){
+  mode='reveal';const w=cur,card=$('card');
+  const pl=w.pl?`pl. die ${esc(w.pl)}`:'sin plural';
+  const h=S.set.hints?hint(w):'';
+  const alt=w.alt?`<div class="info">También se acepta <b class="g-${w.alt}">${ART[w.alt]}</b></div>`:'';
+  card.innerHTML=`<div class="tint" id="tint"></div><div class="top-note">No es <b class="g-${g}">${ART[g]}</b></div><div class="word"><span class="art g-${w.g}">${ART[w.g]}</span>${esc(w.w)}</div><div class="tr">${esc(tr(w))}</div><div class="info">${pl}</div>${alt}${h?`<div class="hint">${h}</div>`:''}${segs(w.k)}<div class="tap">Toca o desliza para seguir</div>`;
+  card.classList.remove('shake');void card.offsetWidth;card.classList.add('shake');
+  pillState(w.g);busy=false;
+}
+
+function pillState(right,hot){
+  for(const p of document.querySelectorAll('.pill')){const g=p.dataset.g;
+    p.classList.toggle('right',right===g);p.classList.toggle('dim',(!!right&&right!==g)||(!!hot&&hot!==g));p.classList.toggle('hot',hot===g)}
+}
+
+let toastT=null;
+function toast(html){const t=$('toast');t.innerHTML=html;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1100)}
+
+const VEC={m:[1,0],f:[-1,0],n:[0,-1]};
+function answer(g,from){
+  if(busy)return;
+  if(mode==='reveal'){next();return}
+  if(mode!=='q')return;
+  busy=true;
+  const w=cur,ok=g===w.g||g===w.alt;
+  const p=S.p[w.k]||(S.p[w.k]=[0,0,++S.seq]);
+  const was=isM(w.k);
+  recent.push(w.k);if(recent.length>6)recent.shift();
+  if(ok){
+    p[0]++;save();
+    const now=isM(w.k);
+    toast(`<span class="g-${w.g}" style="filter:brightness(1.25)">${ART[w.g]}</span> ${esc(w.w)} · ${esc(tr(w))}${now&&!was?' · ¡dominada!':''}`);
+    const card=$('card'),[vx,vy]=VEC[g],d=Math.max(innerWidth,innerHeight);
+    const fx=from?from[0]:0,fy=from?from[1]:0;
+    card.classList.add('anim');
+    card.style.transform=`translate(${fx+vx*d}px,${fy+vy*d}px) rotate(${vx*18}deg)`;card.style.opacity='0';
+    setTimeout(showCard,200);
+  }else{
+    p[0]=0;p[1]++;save();
+    const card=$('card');card.classList.add('anim');card.style.transform='';
+    setTimeout(()=>{card.classList.remove('anim');reveal(g)},from?160:0);
+  }
+}
+function next(){showCard()}
+
+/* drag */
+{
+  const card=$('card');let sx=0,sy=0,dx=0,dy=0,drag=false,id=null,t0=0;
+  const target=()=>{const d=Math.hypot(dx,dy);if(d<24)return null;if(-dy>Math.abs(dx))return 'n';if(dy>Math.abs(dx))return null;return dx>0?'m':'f'};
+  card.addEventListener('pointerdown',e=>{if(busy||mode==='empty'||e.button>0)return;drag=true;id=e.pointerId;sx=e.clientX;sy=e.clientY;dx=dy=0;t0=performance.now();card.setPointerCapture(id);card.classList.remove('anim','enter','shake')});
+  card.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==id)return;dx=e.clientX-sx;dy=e.clientY-sy;
+    card.style.transform=`translate(${dx}px,${Math.min(dy,dy*.35)}px) rotate(${dx/22}deg)`;
+    const g=target();if(mode==='q'){pillState(null,g);const t=$('tint');if(t){t.style.background=g?`var(--${{m:'der',f:'die',n:'das'}[g]})`:'transparent';t.style.opacity=g?Math.min(.22,Math.hypot(dx,dy)/600):0}}});
+  const end=e=>{if(!drag||e.pointerId!==id)return;drag=false;
+    const g=target(),dt=performance.now()-t0,dist=Math.hypot(dx,dy),fast=dist/dt>.6&&dist>40;
+    if(mode==='reveal'){if(dist<10||dist>60){card.style.transform='';next()}else{card.classList.add('anim');card.style.transform=''}return}
+    if(g&&(fast||(g==='n'?-dy>90:Math.abs(dx)>90))){answer(g,[dx,Math.min(dy,dy*.35)])}
+    else{card.classList.add('anim');card.style.transform='';pillState();const t=$('tint');if(t)t.style.opacity=0}};
+  card.addEventListener('pointerup',end);card.addEventListener('pointercancel',end);
+  card.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;if(b.dataset.act==='lib')go('lib');if(b.dataset.act==='rev'){reviewAll=true;showCard()}});
+  for(const p of document.querySelectorAll('.pill'))p.addEventListener('click',()=>answer(p.dataset.g));
+  addEventListener('keydown',e=>{if(!$('v-play').classList.contains('on')||e.target.tagName==='INPUT')return;
+    const g={ArrowLeft:'f',ArrowRight:'m',ArrowUp:'n'}[e.key];
+    if(g){e.preventDefault();answer(g)}else if((e.key==='Enter'||e.key===' ')&&mode==='reveal'){e.preventDefault();next()}});
+}
+
+/* views */
+function go(v){for(const s of document.querySelectorAll('.view'))s.classList.remove('on');
+  if(v==='play'){$('v-play').classList.add('on');if(mode!=='reveal')showCard();else renderCount()}
+  if(v==='lib'){$('v-lib').classList.add('on');renderLib()}
+  if(v==='set'){$('v-set').classList.add('on');renderSet()}}
+$('toLib').onclick=()=>go('lib');$('toSet').onclick=()=>go('set');$('count').onclick=()=>{filt='mas';libTab='w';go('lib')};
+for(const b of document.querySelectorAll('.back'))b.onclick=()=>{reviewAll=false;go('play')};
+$('tabT').onclick=()=>{libTab='t';renderLib()};$('tabW').onclick=()=>{libTab='w';limit=150;renderLib()};
+
+const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const PLUS='<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+const X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+function topicStats(k){const ws=nouns().filter(w=>w.t===k&&!S.x[w.k]);let m=0;for(const w of ws)if(isM(w.k))m++;return {n:ws.length,m}}
+function renderLib(){
+  $('tabT').classList.toggle('on',libTab==='t');$('tabW').classList.toggle('on',libTab==='w');
+  const c=counts();$('libTitle').textContent=`${c.a} activas`;
+  const body=$('libBody');
+  if(libTab==='t'){
+    const ms=topicStats('mine');
+    let h=`<div class="quick"><button class="chip" data-q="all">Activar todos</button><button class="chip" data-q="none">Desactivar todos</button></div>`;
+    h+=`<div class="row"><div class="main"><h3>Mis palabras</h3><div class="sub ${S.c.length&&topicOn('mine')?'on':''}">${S.c.length?`${S.c.length} propias · ${ms.n?Math.round(ms.m/ms.n*100):0}% dominado`:'Agrega las que encuentres'}</div></div><button class="chk" data-add aria-label="Agregar palabra">${PLUS}</button>${S.c.length?`<button class="chk ${topicOn('mine')?'on':''}" data-t="mine" aria-label="Activar mis palabras">${CHECK}</button>`:''}</div>`;
+    if(addOpen)h+=addForm();
+    for(const t of TOPICS){const on=topicOn(t.k),s=topicStats(t.k),pct=s.n?Math.round(s.m/s.n*100):0;
+      h+=`<div class="row"><div class="main"><h3>${esc(S.set.lang==='en'?t.en:t.es)}</h3><div class="sub ${on?'on':''}">${t.n} palabras${on||s.m?` · ${pct}% dominado`:''}</div>${s.m?`<div class="mbar"><i style="width:${pct}%"></i></div>`:''}</div><button class="chk ${on?'on':''}" data-t="${t.k}" aria-label="Activar ${esc(t.es)}" aria-pressed="${on}">${CHECK}</button></div>`}
+    body.innerHTML=h;
+    if(addOpen){const i=$('fW');if(i&&!i.value)i.focus({preventScroll:true})}
+  }else{
+    const fl=[['act','Activas'],['mas','Dominadas'],['hard','Difíciles'],['all','Todas']];
+    const q=query.trim().toLowerCase();
+    let ws=nouns();
+    if(!q){if(filt==='act')ws=ws.filter(w=>topicOn(w.t));if(filt==='mas')ws=ws.filter(w=>topicOn(w.t)&&isM(w.k));if(filt==='hard')ws=ws.filter(w=>st(w.k)[1]>=2).sort((a,b)=>st(b.k)[1]-st(a.k)[1])}
+    else ws=ws.filter(w=>w.w.toLowerCase().includes(q)||w.es.toLowerCase().includes(q)||w.en.toLowerCase().includes(q));
+    if(filt!=='hard'||q)ws=ws.slice().sort((a,b)=>a.w.localeCompare(b.w,'de'));
+    let h=`<div class="search"><input id="q" type="search" placeholder="Buscar en alemán, español o inglés" value="${esc(query)}" autocomplete="off"></div>`;
+    if(!q)h+=`<div class="quick">${fl.map(([k,l])=>`<button class="chip ${filt===k?'on':''}" data-f="${k}">${l}</button>`).join('')}</div>`;
+    if(!ws.length)h+=`<p style="color:var(--mut);text-align:center;margin-top:30px">${q?'Nada con esa búsqueda.':filt==='hard'?'Aún no hay palabras difíciles. Aparecen aquí las que fallas dos veces o más.':filt==='mas'?'Todavía no dominas ninguna.':'No hay palabras en los temas activos.'}</p>`;
+    h+=ws.slice(0,limit).map(w=>{const on=!S.x[w.k];const s=st(w.k);
+      return `<div class="nrow"><div class="main"><h3><span class="g-${w.g}">${cap(ART[w.g])}</span> ${esc(w.w)}</h3><div class="sub">${esc(tr(w))} · ${w.pl?'pl. '+esc(w.pl):'sin plural'}${s[1]?` · ${s[1]} ${s[1]===1?'fallo':'fallos'}`:''}</div>${segs(w.k)}</div>${w.t==='mine'?`<button class="del" data-del="${esc(w.w)}" aria-label="Borrar ${esc(w.w)}">${X}</button>`:''}<button class="chk ${on?'on':''}" data-x="${esc(w.k)}" aria-label="Incluir ${esc(w.w)}" aria-pressed="${on}">${CHECK}</button></div>`}).join('');
+    if(ws.length>limit)h+=`<button class="btn sec more" data-more>Mostrar más (${ws.length-limit})</button>`;
+    const had=document.activeElement&&document.activeElement.id==='q',pos=had?document.activeElement.selectionStart:0,sc=body.scrollTop;
+    body.innerHTML=h;body.scrollTop=sc;
+    const qi=$('q');qi.oninput=()=>{query=qi.value;limit=150;renderLib()};if(had){qi.focus();qi.setSelectionRange(pos,pos)}
+  }
+}
+function addForm(){return `<form class="addf" id="addF"><div class="seg3">${['m','f','n'].map(g=>`<button type="button" class="${g} ${addG===g?'on':''}" data-g3="${g}">${ART[g]}</button>`).join('')}</div><input id="fW" placeholder="Palabra (ej. Schreibtisch)" autocomplete="off" autocapitalize="words"><input id="fP" placeholder="Plural (opcional)" autocomplete="off"><input id="fT" placeholder="Traducción" autocomplete="off"><p class="err" id="fE"></p><div style="display:flex;gap:8px"><button class="btn" type="submit">Guardar</button><button class="btn sec" type="button" data-cancel>Cerrar</button></div></form>`}
+
+$('libBody').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.t){const k=b.dataset.t;if(k==='mine')S.on.mine=topicOn('mine')?0:1;else S.on[k]=S.on[k]?0:1;save();renderLib();return}
+  if(b.dataset.q){for(const t of TOPICS)S.on[t.k]=b.dataset.q==='all'?1:0;S.on.mine=b.dataset.q==='all'?1:0;save();renderLib();return}
+  if(b.hasAttribute('data-add')){addOpen=!addOpen;renderLib();return}
+  if(b.hasAttribute('data-cancel')){addOpen=false;renderLib();return}
+  if(b.dataset.g3){addG=b.dataset.g3;for(const x of document.querySelectorAll('[data-g3]'))x.classList.toggle('on',x.dataset.g3===addG);return}
+  if(b.dataset.f){filt=b.dataset.f;limit=150;renderLib();return}
+  if(b.dataset.x){const k=b.dataset.x;if(S.x[k])delete S.x[k];else S.x[k]=1;save();renderLib();return}
+  if(b.dataset.del){const w=b.dataset.del;S.c=S.c.filter(c=>c[1]!==w);delete S.p['~'+w];delete S.x['~'+w];save();renderLib();return}
+  if(b.hasAttribute('data-more')){limit+=300;renderLib()}
+});
+$('libBody').addEventListener('submit',e=>{e.preventDefault();
+  const w=cap($('fW').value.trim()),pl=$('fP').value.trim(),t=$('fT').value.trim();
+  if(!w){$('fE').textContent='Escribe la palabra.';return}
+  if(!t){$('fE').textContent='Escribe la traducción.';return}
+  if(S.c.some(c=>c[1]===w)){$('fE').textContent='Ya la tienes en tus palabras.';return}
+  S.c.unshift([addG,w,pl?cap(pl):'',t]);S.on.mine=1;save();renderLib();
+  const f=$('fW');if(f){f.value='';f.focus()}toastLib(w)});
+function toastLib(w){const e=$('fE');if(e){e.style.color='var(--das)';e.textContent=`${w} agregada. Puedes seguir agregando.`}}
+
+/* settings */
+function opts(key,list){return `<div class="opts">${list.map(([v,l])=>`<button class="${S.set[key]===v?'on':''}" data-k="${key}" data-v="${v}">${l}</button>`).join('')}</div>`}
+function renderSet(){
+  const n=S.set.n,pct=(n-3)/7*100;
+  $('setBody').innerHTML=`
+  <div class="grp">Aprendizaje</div><div class="box">
+   <div class="set"><div class="lbl">Dominada después de <span id="nV">${n} aciertos</span></div><input type="range" id="nR" min="3" max="10" step="1" value="${n}" style="--pct:${pct}%" aria-label="Aciertos seguidos para dominar"><p>Aciertos seguidos para marcar una palabra como dominada. Un error reinicia la cuenta.</p></div>
+   <div class="set"><div class="lbl">Palabras nuevas a la vez</div>${opts('batch',[[6,'6'],[12,'12'],[20,'20'],[40,'40']])}<p>Cuántas palabras sin dominar rotan al mismo tiempo antes de meter nuevas.</p></div>
+   <div class="set"><div class="lbl">Repasar dominadas</div>${opts('rev',[[0,'Nunca'],[1,'A veces'],[2,'Seguido']])}</div>
+   <div class="set"><div class="lbl">Mostrar traducción</div>${opts('show',[['always','Siempre'],['after','Al responder']])}</div>
+   <div class="set"><div class="lbl">Idioma de la traducción</div>${opts('lang',[['es','Español'],['en','English']])}</div>
+   <div class="set line"><div class="lbl">Pistas al fallar</div><button class="tgl ${S.set.hints?'on':''}" id="hintT" role="switch" aria-checked="${!!S.set.hints}" aria-label="Pistas al fallar"></button></div>
+  </div>
+  <div class="grp">Cómo se juega</div><div class="box"><div class="set"><div class="legend"><b class="g-f">← die</b><span>desliza a la izquierda</span><b class="g-m">der →</b><span>desliza a la derecha</span><b class="g-n">das ↑</b><span>desliza hacia arriba</span></div><p>También puedes tocar las etiquetas o usar las flechas del teclado. Las palabras con dos géneros válidos (como der/das Joghurt) aceptan ambos.</p></div></div>
+  <div class="grp">Progreso</div><div class="box"><div class="set"><div class="lbl">${counts().m} dominadas <span>${Object.keys(S.p).length} practicadas</span></div><p>${syncNote}</p></div>
+   <button class="danger" id="reset">${resetArm?'Toca otra vez para borrar todo el progreso':'Reiniciar progreso'}</button></div>`;
+  const r=$('nR');r.oninput=()=>{S.set.n=+r.value;r.style.setProperty('--pct',(S.set.n-3)/7*100+'%');$('nV').textContent=S.set.n+' aciertos';save()};
+  $('hintT').onclick=()=>{S.set.hints=S.set.hints?0:1;save();renderSet()};
+  $('reset').onclick=()=>{if(!resetArm){resetArm=true;renderSet();setTimeout(()=>{if(resetArm){resetArm=false;if($('v-set').classList.contains('on'))renderSet()}},4000);return}
+    resetArm=false;S.p={};S.seq=0;recent=[];save();renderSet()};
+}
+$('setBody').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;let v=b.dataset.v;if(k==='batch'||k==='rev')v=+v;S.set[k]=v;save();renderSet()});
+
+/* sync to the viewer's account when available */
+let ref=null,writing=false,dirty=false;
+async function push(){if(!ref)return;if(writing){dirty=true;return}writing=true;
+  try{await ref.set({t:S.t,state:JSON.stringify(S)});syncNote='Guardado en tu cuenta: se sincroniza entre tus dispositivos.'}catch(e){syncNote='Guardado en este navegador (no se pudo sincronizar).'}
+  writing=false;if(dirty){dirty=false;push()}}
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&saveT){clearTimeout(saveT);saveT=null;push()}});
+(async()=>{try{
+  if(!window.claude||!claude.use)return;
+  const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
+  if(!db||!user)return;const id=await user.id();if(!id)return;
+  ref=db.doc('data/users/'+id+'/state');
+  const snap=await ref.get();
+  if(snap.exists){const d=snap.data();if(d&&d.t>S.t){try{const j=JSON.parse(d.state);if(j&&j.v===1){S=Object.assign(fresh(),j,{set:Object.assign(fresh().set,j.set)});try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if($('v-play').classList.contains('on')&&mode!=='reveal')showCard();else if($('v-lib').classList.contains('on'))renderLib();else renderCount()}}catch(e){}}}
+  syncNote='Guardado en tu cuenta: se sincroniza entre tus dispositivos.';
+  if(!snap.exists||snap.data().t<S.t)push();
+  if($('v-set').classList.contains('on'))renderSet();
+}catch(e){ref=null}})();
+
+showCard();
+}
+</script>
+</body>
+</html>
