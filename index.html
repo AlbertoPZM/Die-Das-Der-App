@@ -58,6 +58,9 @@ input{font:inherit;color:inherit}
 .card.rv .tr{font-size:18px;margin-top:4px}
 .card.rv .segs{margin-top:16px}
 .frame b{font-weight:800}
+.spk{position:absolute;top:12px;right:12px;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--mut);z-index:1}
+.spk:hover{color:var(--ink);background:var(--card2)}
+.spk svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .frame{position:relative;font-size:20px;font-weight:600;color:var(--mut);margin-bottom:6px;text-align:center;line-height:1.3}
 .case{display:inline-block;background:var(--bg);color:var(--ink);border-radius:10px;padding:3px 10px;font-size:14px;font-weight:700;margin-right:8px;vertical-align:2px}
 .top-note.ok{color:var(--das);font-weight:700}
@@ -228,7 +231,7 @@ const CAL=new Set(['Mittwoch','Januar','Mai','August','Dezember','Frühling','So
 const RULES=[['chen','n',1],['lein','n',1],['ung','f',1],['heit','f',1],['keit','f',1],['schaft','f',1],['ismus','m',1],['ling','m',1],['tät','f',1],['ion','f',1],['anz','f',1],['enz','f',1],['ment','n',0],['ei','f',0],['ie','f',0],['ik','f',0],['ur','f',0],['um','n',0],['o','n',0],['e','f',0]];
 
 const KEY='derdiedas.v1';
-const fresh=()=>({v:1,t:0,seq:0,seed:(Math.random()*1e9)|0,set:{n:6,rev:0,show:'always',lang:'es',hints:1,batch:12,cases:['nom']},on:{essen:1,trinken:1},x:{},p:{},c:[]});
+const fresh=()=>({v:1,t:0,seq:0,seed:(Math.random()*1e9)|0,set:{n:6,rev:0,show:'always',lang:'es',hints:1,batch:12,cases:['nom'],speak:1,sfx:1},on:{essen:1,trinken:1},x:{},p:{},c:[]});
 let S=fresh();
 try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(j&&j.v===1)S=Object.assign(fresh(),j,{set:Object.assign(fresh().set,j.set)})}catch(e){}
 
@@ -305,6 +308,18 @@ const form=(w,c)=>(c==='akk'&&FORMS[w.w]?FORMS[w.w][0]:c==='dat'&&FORMS[w.w]?FOR
 const caseMode=()=>S.set.cases.some(c=>c!=='nom');
 const rnd=a=>a[Math.floor(Math.random()*a.length)];
 
+let AC=null,VOICE=null,unlocked=false;
+function ac(){try{if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;AC=new C()}if(AC.state==='suspended')AC.resume();return AC}catch(e){return null}}
+function tone(f,st,dur,type,vol){const c=ac();if(!c)return;try{const o=c.createOscillator(),g=c.createGain(),t0=c.currentTime+st;o.type=type;o.frequency.setValueAtTime(f,t0);g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+.012);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);o.connect(g);g.connect(c.destination);o.start(t0);o.stop(t0+dur+.03)}catch(e){}}
+function sfx(ok){if(!S.set.sfx)return;if(ok){tone(784,0,.11,'sine',.16);tone(1175,.07,.18,'sine',.13)}else{tone(207,0,.11,'triangle',.3);tone(174,.13,.17,'triangle',.3)}}
+const hasTTS='speechSynthesis' in window&&'SpeechSynthesisUtterance' in window;
+function pickVoice(){try{const vs=speechSynthesis.getVoices().filter(v=>/^de([-_]|$)/i.test(v.lang));VOICE=null;for(const r of [/premium|enhanced|verbessert|natural/i,/anna/i,/google/i,/de[-_]DE/i]){const v=vs.find(v=>r.test(v.name)||r.test(v.lang));if(v){VOICE=v;break}}if(!VOICE)VOICE=vs[0]||null;if($('v-set').classList.contains('on'))renderSet()}catch(e){}}
+if(hasTTS){pickVoice();try{speechSynthesis.addEventListener('voiceschanged',pickVoice)}catch(e){speechSynthesis.onvoiceschanged=pickVoice}}
+function say(text){if(!hasTTS)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';if(VOICE)u.voice=VOICE;u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
+function unlock(){if(unlocked)return;unlocked=true;ac();if(hasTTS){try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}}
+addEventListener('pointerdown',unlock,{capture:true});addEventListener('keydown',unlock,{capture:true});
+const phrase=(w,g)=>(w.fr?w.fr[0]+' ':'')+CASES[w.c][g]+' '+form(w,w.c)+(w.fr?w.fr[1]:'');
+
 function showCard(){
   const card=$('card');busy=false;mode='q';card.className='card';card.style.transform='';card.style.opacity='';
   cur=pick();
@@ -320,7 +335,7 @@ function showCard(){
   pillState();
   const fr=w.fr?`<div class="frame"><span class="case">${CASES[w.c].name}</span>${esc(w.fr[0])} ___</div>`:'';
   const f=form(w,w.c);
-  card.innerHTML=`<div class="tint" id="tint"></div>${rev?'<div class="top-note">Repaso</div>':''}${fr}<div class="word ${wc(f)}">${esc(f)}${w.fr?esc(w.fr[1]):''}</div><div class="tr">${S.set.show==='always'?esc(tr(w)):''}</div>${segs(w.k)}`;
+  card.innerHTML=`<div class="tint" id="tint"></div><button class="spk" data-act="spk" aria-label="Escuchar"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></button>${rev?'<div class="top-note">Repaso</div>':''}${fr}<div class="word ${wc(f)}">${esc(f)}${w.fr?esc(w.fr[1]):''}</div><div class="tr">${S.set.show==='always'?esc(tr(w)):''}</div>${segs(w.k)}`;
   void card.offsetWidth;card.classList.add('enter');
   renderCount();
 }
@@ -346,7 +361,7 @@ function reveal(g,good){
   const top=good?`<div class="top-note ok">✓ Correcto, las dos formas valen</div>`:`<div class="top-note">No es <b class="g-${g}">${A[g]}</b></div>`;
   const head=w.fr?`<div class="frame">${esc(w.fr[0])} <b class="g-${showG}">${A[showG]}</b></div><div class="word ${wc(f)}">${esc(f)}${esc(w.fr[1])}</div>`:`<div class="word ${wc(f)}"><span class="art g-${showG}">${A[showG]}</span>${esc(f)}</div>`;
   card.classList.add('rv');
-  card.innerHTML=`<div class="tint" id="tint"></div>${top}${head}<div class="tr">${esc(tr(w))}</div>${w.fr?'':`<div class="info">${pl}</div>`}${extra}${segs(w.k)}<div class="tap">Toca o desliza para seguir</div>`;
+  card.innerHTML=`<div class="tint" id="tint"></div><button class="spk" data-act="spk" aria-label="Escuchar"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></button>${top}${head}<div class="tr">${esc(tr(w))}</div>${w.fr?'':`<div class="info">${pl}</div>`}${extra}${segs(w.k)}<div class="tap">Toca o desliza para seguir</div>`;
   if(!good){card.classList.remove('shake');void card.offsetWidth;card.classList.add('shake')}
   pillState(w.g);busy=false;
 }
@@ -375,6 +390,7 @@ function answer(g,from){
   const card=$('card');
   if(ok){
     p[0]++;save();
+    sfx(true);if(S.set.speak)say(phrase(w,(g===w.g||g===w.alt)?g:w.g));
     const now=isM(w.k),gg=(g===w.g||g===w.alt)?g:w.g;
     if(w.alt&&p[0]<=2){card.classList.add('anim');card.style.transform='';setTimeout(()=>{card.classList.remove('anim');reveal(gg,true)},from?160:0);return}
     const ph=w.fr?`${esc(w.fr[0])} <span class="g-${gg}" style="filter:brightness(1.25)">${A[gg]}</span> ${esc(form(w,w.c))}${esc(w.fr[1])}`:`<span class="g-${gg}" style="filter:brightness(1.25)">${A[gg]}</span> ${esc(w.w)} · ${esc(tr(w))}`;
@@ -386,6 +402,7 @@ function answer(g,from){
     setTimeout(showCard,200);
   }else{
     p[0]=0;p[1]++;save();
+    sfx(false);if(S.set.speak)say(phrase(w,w.g));
     card.classList.add('anim');card.style.transform='';
     setTimeout(()=>{card.classList.remove('anim');reveal(g)},from?160:0);
   }
@@ -396,7 +413,7 @@ function next(){showCard()}
 {
   const card=$('card');let sx=0,sy=0,dx=0,dy=0,drag=false,id=null,t0=0;
   const target=()=>{const d=Math.hypot(dx,dy);if(d<24)return null;if(-dy>Math.abs(dx))return 'n';if(dy>Math.abs(dx))return null;return dx>0?'m':'f'};
-  card.addEventListener('pointerdown',e=>{if(busy||mode==='empty'||e.button>0)return;drag=true;id=e.pointerId;sx=e.clientX;sy=e.clientY;dx=dy=0;t0=performance.now();card.setPointerCapture(id);card.classList.remove('anim','enter','shake')});
+  card.addEventListener('pointerdown',e=>{if(e.target.closest('.spk'))return;if(busy||mode==='empty'||e.button>0)return;drag=true;id=e.pointerId;sx=e.clientX;sy=e.clientY;dx=dy=0;t0=performance.now();card.setPointerCapture(id);card.classList.remove('anim','enter','shake')});
   card.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==id)return;dx=e.clientX-sx;dy=e.clientY-sy;
     card.style.transform=`translate(${dx}px,${Math.min(dy,dy*.35)}px) rotate(${dx/22}deg)`;
     const g=target();if(mode==='q'){pillState(null,g);const t=$('tint');if(t){t.style.background=g?`var(--${{m:'der',f:'die',n:'das'}[g]})`:'transparent';t.style.opacity=g?Math.min(.22,Math.hypot(dx,dy)/600):0}}});
@@ -406,7 +423,7 @@ function next(){showCard()}
     if(g&&(fast||(g==='n'?-dy>90:Math.abs(dx)>90))){answer(g,[dx,Math.min(dy,dy*.35)])}
     else{card.classList.add('anim');card.style.transform='';pillState();const t=$('tint');if(t)t.style.opacity=0}};
   card.addEventListener('pointerup',end);card.addEventListener('pointercancel',e=>{if(!drag||e.pointerId!==id)return;drag=false;card.classList.add('anim');card.style.transform='';if(mode==='q')pillState();const tt=$('tint');if(tt)tt.style.opacity=0});
-  card.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;if(b.dataset.act==='lib')go('lib');if(b.dataset.act==='rev'){reviewAll=true;showCard()}});
+  card.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;if(b.dataset.act==='spk'){e.stopPropagation();if(cur&&!cur.empty)say(mode==='reveal'?phrase(cur,cur.g):form(cur,cur.c));return}if(b.dataset.act==='lib')go('lib');if(b.dataset.act==='rev'){reviewAll=true;showCard()}});
   for(const p of document.querySelectorAll('.pill'))p.addEventListener('click',()=>answer(p.dataset.g));
   addEventListener('keydown',e=>{if(!$('v-play').classList.contains('on')||e.target.tagName==='INPUT')return;
     const g={ArrowLeft:'f',ArrowRight:'m',ArrowUp:'n'}[e.key];
@@ -494,6 +511,12 @@ function renderSet(){
    <div class="set"><div class="lbl">Idioma de la traducción</div>${opts('lang',[['es','Español'],['en','English']])}</div>
    <div class="set line"><div class="lbl">Pistas al fallar</div><button class="tgl ${S.set.hints?'on':''}" id="hintT" role="switch" aria-checked="${!!S.set.hints}" aria-label="Pistas al fallar"></button></div>
   </div>
+  <div class="grp">Sonido</div><div class="box">
+   <div class="set line"><div class="lbl">Pronunciar al responder</div><button class="tgl ${S.set.speak?'on':''}" data-tg="speak" role="switch" aria-checked="${!!S.set.speak}" aria-label="Pronunciar al responder"></button></div>
+   <div class="set line"><div class="lbl">Efectos de sonido</div><button class="tgl ${S.set.sfx?'on':''}" data-tg="sfx" role="switch" aria-checked="${!!S.set.sfx}" aria-label="Efectos de sonido"></button></div>
+   <div class="set line"><div class="lbl" style="flex-direction:column;align-items:flex-start;gap:2px">Voz<span style="font-weight:500;white-space:normal">${!hasTTS?'Este navegador no puede leer en voz alta.':VOICE?esc(VOICE.name)+' ('+esc(VOICE.lang)+')':'No encontré voz en alemán; se usará la predeterminada.'}</span></div><button class="btn sec" id="tryV" style="flex:none">Probar</button></div>
+   <div class="set"><p>Con el botón de bocina de la tarjeta escuchas la palabra cuando quieras. Si el iPhone está en silencio, puede que no suene. Para una voz más natural en iPhone: Ajustes → Accesibilidad → Contenido leído → Voces → Alemán, y descarga una voz "mejorada".</p></div>
+  </div>
   <div class="grp">Casos</div><div class="box">
    <div class="set"><div class="lbl">Practicar con</div><div class="opts">${[['nom','Nominativo'],['akk','Acusativo'],['dat','Dativo']].map(([c,l])=>`<button class="${S.set.cases.includes(c)?'on':''}" data-case="${c}" aria-pressed="${S.set.cases.includes(c)}">${l}</button>`).join('')}</div><p>${caseMode()?'Cada tarjeta trae una frase corta (por ejemplo “mit ___ Honig”) y eliges el artículo de ese caso.':'Solo nominativo: practicas el género con der, die y das. Activa acusativo o dativo para practicar los casos.'}</p></div>
    <div class="set"><div class="lbl">¿Cuándo se usa cada caso?</div>
@@ -507,6 +530,8 @@ function renderSet(){
   <div class="grp">Progreso</div><div class="box"><div class="set"><div class="lbl">${counts().m} dominadas <span>${Object.keys(S.p).length} practicadas</span></div><p>${syncNote}</p></div>
    <button class="danger" id="reset">${resetArm?'Toca otra vez para borrar todo el progreso':'Reiniciar progreso'}</button></div>`;
   const r=$('nR');r.oninput=()=>{S.set.n=+r.value;r.style.setProperty('--pct',(S.set.n-3)/7*100+'%');$('nV').textContent=S.set.n+' aciertos';save()};
+  $('tryV').onclick=()=>{unlock();say('der Honig. mit dem Kuchen.')};
+  for(const b of document.querySelectorAll('[data-tg]'))b.onclick=()=>{const k=b.dataset.tg;S.set[k]=S.set[k]?0:1;save();renderSet()};
   $('hintT').onclick=()=>{S.set.hints=S.set.hints?0:1;save();renderSet()};
   $('reset').onclick=()=>{if(!resetArm){resetArm=true;renderSet();setTimeout(()=>{if(resetArm){resetArm=false;if($('v-set').classList.contains('on'))renderSet()}},4000);return}
     resetArm=false;S.p={};S.seq=0;recent=[];save();renderSet()};
