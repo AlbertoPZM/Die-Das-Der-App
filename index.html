@@ -58,6 +58,11 @@ input{font:inherit;color:inherit}
 .card.rv .tr{font-size:18px;margin-top:4px}
 .card.rv .segs{margin-top:16px}
 .frame b{font-weight:800}
+.vlist{display:grid;gap:6px;margin-top:10px;max-height:320px;overflow-y:auto}
+.vopt{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:10px 14px;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--line);min-height:44px}
+.vopt b{font-weight:700}
+.vopt span{font-size:14px;color:var(--mut)}
+.vopt.on{box-shadow:0 0 0 2px var(--der)}
 .wrow{position:relative;display:flex;align-items:center;justify-content:center;gap:4px;max-width:100%}
 .wrow .word{min-width:0}
 .spk{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--mut);flex:none;margin-left:-8px}
@@ -234,7 +239,7 @@ const CAL=new Set(['Mittwoch','Januar','Mai','August','Dezember','Frühling','So
 const RULES=[['chen','n',1],['lein','n',1],['ung','f',1],['heit','f',1],['keit','f',1],['schaft','f',1],['ismus','m',1],['ling','m',1],['tät','f',1],['ion','f',1],['anz','f',1],['enz','f',1],['ment','n',0],['ei','f',0],['ie','f',0],['ik','f',0],['ur','f',0],['um','n',0],['o','n',0],['e','f',0]];
 
 const KEY='derdiedas.v1';
-const fresh=()=>({v:1,t:0,seq:0,seed:(Math.random()*1e9)|0,set:{n:6,rev:0,show:'always',lang:'es',hints:1,batch:12,cases:['nom'],autoSpeak:0,sfx:1},on:{essen:1,trinken:1},x:{},p:{},c:[]});
+const fresh=()=>({v:1,t:0,seq:0,seed:(Math.random()*1e9)|0,set:{n:6,rev:0,show:'always',lang:'es',hints:1,batch:12,cases:['nom'],autoSpeak:0,sfx:1,voice:''},on:{essen:1,trinken:1},x:{},p:{},c:[]});
 let S=fresh();
 try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(j&&j.v===1)S=Object.assign(fresh(),j,{set:Object.assign(fresh().set,j.set)})}catch(e){}
 
@@ -316,9 +321,10 @@ function ac(){try{if(!AC){const C=window.AudioContext||window.webkitAudioContext
 function tone(f,st,dur,type,vol){const c=ac();if(!c)return;try{const o=c.createOscillator(),g=c.createGain(),t0=c.currentTime+st;o.type=type;o.frequency.setValueAtTime(f,t0);g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+.012);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);o.connect(g);g.connect(c.destination);o.start(t0);o.stop(t0+dur+.03)}catch(e){}}
 function sfx(ok){if(!S.set.sfx)return;if(ok){tone(784,0,.11,'sine',.16);tone(1175,.07,.18,'sine',.13)}else{tone(207,0,.11,'triangle',.3);tone(174,.13,.17,'triangle',.3)}}
 const hasTTS='speechSynthesis' in window&&'SpeechSynthesisUtterance' in window;
-function pickVoice(){try{const vs=speechSynthesis.getVoices().filter(v=>/^de([-_]|$)/i.test(v.lang));VOICE=null;for(const r of [/premium|enhanced|verbessert|natural/i,/anna/i,/google/i,/de[-_]DE/i]){const v=vs.find(v=>r.test(v.name)||r.test(v.lang));if(v){VOICE=v;break}}if(!VOICE)VOICE=vs[0]||null;if($('v-set').classList.contains('on'))renderSet()}catch(e){}}
+let VOICES=[];
+function pickVoice(){try{VOICES=speechSynthesis.getVoices().filter(v=>/^de([-_]|$)/i.test(v.lang)).sort((a,b)=>(a.lang.replace('_','-')==='de-DE'?0:1)-(b.lang.replace('_','-')==='de-DE'?0:1)||a.name.localeCompare(b.name));VOICE=S.set.voice?VOICES.find(v=>v.voiceURI===S.set.voice)||VOICES.find(v=>v.name===S.set.voice)||null:null;if($('v-set').classList.contains('on'))renderSet()}catch(e){}}
 if(hasTTS){pickVoice();try{speechSynthesis.addEventListener('voiceschanged',pickVoice)}catch(e){speechSynthesis.onvoiceschanged=pickVoice}}
-function say(text){if(!hasTTS)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';if(VOICE)u.voice=VOICE;u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
+function say(text){if(!hasTTS)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=VOICE?VOICE.lang:'de-DE';if(VOICE)u.voice=VOICE;u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
 function unlock(){if(unlocked)return;unlocked=true;ac();if(hasTTS){try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}}
 addEventListener('pointerdown',unlock,{capture:true});addEventListener('keydown',unlock,{capture:true});
 const phrase=(w,g)=>(w.fr?w.fr[0]+' ':'')+CASES[w.c][g]+' '+form(w,w.c)+(w.fr?w.fr[1]:'');
@@ -517,8 +523,8 @@ function renderSet(){
   <div class="grp">Sonido</div><div class="box">
    <div class="set line"><div class="lbl">Pronunciar al responder</div><button class="tgl ${S.set.autoSpeak?'on':''}" data-tg="autoSpeak" role="switch" aria-checked="${!!S.set.autoSpeak}" aria-label="Pronunciar al responder"></button></div>
    <div class="set line"><div class="lbl">Efectos de sonido</div><button class="tgl ${S.set.sfx?'on':''}" data-tg="sfx" role="switch" aria-checked="${!!S.set.sfx}" aria-label="Efectos de sonido"></button></div>
-   <div class="set line"><div class="lbl" style="flex-direction:column;align-items:flex-start;gap:2px">Voz<span style="font-weight:500;white-space:normal">${!hasTTS?'Este navegador no puede leer en voz alta.':VOICE?esc(VOICE.name)+' ('+esc(VOICE.lang)+')':'No encontré voz en alemán; se usará la predeterminada.'}</span></div><button class="btn sec" id="tryV" style="flex:none">Probar</button></div>
-   <div class="set"><p>Toca la bocina junto a la palabra para escucharla. Si activas “Pronunciar al responder”, también la dice sola después de cada respuesta. Si el iPhone está en silencio, puede que no suene. Para una voz más natural en iPhone: Ajustes → Accesibilidad → Contenido leído → Voces → Alemán, y descarga una voz "mejorada".</p></div>
+   <div class="set"><div class="lbl">Voz <button class="btn sec" id="tryV" style="min-height:36px;padding:6px 14px">Probar</button></div>${!hasTTS?'<p>Este navegador no puede leer en voz alta.</p>':`<div class="vlist"><button class="vopt ${!S.set.voice?'on':''}" data-voice=""><b>Del sistema</b><span>La que elijas en Ajustes del iPhone, si Safari la respeta</span></button>${VOICES.map(v=>`<button class="vopt ${S.set.voice&&(S.set.voice===v.voiceURI)?'on':''}" data-voice="${esc(v.voiceURI)}"><b>${esc(v.name)}</b><span>${esc(v.lang)}${v.localService===false?' · en línea':''}</span></button>`).join('')}</div>${VOICES.length?'':'<p>No aparece ninguna voz en alemán en este navegador.</p>'}`}</div>
+   <div class="set"><p>Toca la bocina junto a la palabra para escucharla. Si activas “Pronunciar al responder”, también la dice sola después de cada respuesta. Si el iPhone está en silencio, puede que no suene. Las voces "mejoradas" o "premium" que descargas en Ajustes → Accesibilidad → Contenido leído → Voces aparecen en esta lista solo si Safari las deja usar; si no salen aquí, la página no tiene acceso a ellas.</p></div>
   </div>
   <div class="grp">Casos</div><div class="box">
    <div class="set"><div class="lbl">Practicar con</div><div class="opts">${[['nom','Nominativo'],['akk','Acusativo'],['dat','Dativo']].map(([c,l])=>`<button class="${S.set.cases.includes(c)?'on':''}" data-case="${c}" aria-pressed="${S.set.cases.includes(c)}">${l}</button>`).join('')}</div><p>${caseMode()?'Cada tarjeta trae una frase corta (por ejemplo “mit ___ Honig”) y eliges el artículo de ese caso.':'Solo nominativo: practicas el género con der, die y das. Activa acusativo o dativo para practicar los casos.'}</p></div>
@@ -534,6 +540,7 @@ function renderSet(){
    <button class="danger" id="reset">${resetArm?'Toca otra vez para borrar todo el progreso':'Reiniciar progreso'}</button></div>`;
   const r=$('nR');r.oninput=()=>{S.set.n=+r.value;r.style.setProperty('--pct',(S.set.n-3)/7*100+'%');$('nV').textContent=S.set.n+' aciertos';save()};
   $('tryV').onclick=()=>{unlock();say('der Honig. mit dem Kuchen.')};
+  for(const b of document.querySelectorAll('[data-voice]'))b.onclick=()=>{unlock();S.set.voice=b.dataset.voice;save();pickVoice();renderSet();say('der Honig. mit dem Kuchen.')};
   for(const b of document.querySelectorAll('[data-tg]'))b.onclick=()=>{const k=b.dataset.tg;S.set[k]=S.set[k]?0:1;save();renderSet()};
   $('hintT').onclick=()=>{S.set.hints=S.set.hints?0:1;save();renderSet()};
   $('reset').onclick=()=>{if(!resetArm){resetArm=true;renderSet();setTimeout(()=>{if(resetArm){resetArm=false;if($('v-set').classList.contains('on'))renderSet()}},4000);return}
